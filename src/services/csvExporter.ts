@@ -29,52 +29,103 @@ export interface ExportResult {
   error?: string;
 }
 
-// Default column order for leadership review
+// Column order matching original RH Compensation Report format plus new proposed columns
 const DEFAULT_COLUMN_ORDER = [
-  // Employee identification
-  'employeeId',
-  'name',
-  'email',
-  'departmentCode',
-  'jobTitle',
-  'managerId',
-  'country',
+  // Original compensation report columns (matching RH_Compensation_Report_w_Hierarchy_-_Manager.csv)
+  'employeeId', // Employee Number
+  'name', // Employee Full name
+  'jobFunction', // Job Function
+  'jobFamily', // Job Family
+  'jobProfile', // Job Profile
+  'jobCategory', // Job Category
+  'jobTitle', // Business Title
+  'jobCode', // Job Code
+  'gradeBand', // Grade Band
+  'gradePayRegion', // Grade Pay Region
+  'compensationGradeProfile', // Compensation Grade Profile
+  'baseSalary', // Base Pay All Countries
+  'variableCompPercent', // Variable Comp %
+  'variableCompAmt', // Variable Comp Amt (FTE)
+  'salesTIC', // Sales TIC
+  'comparatio', // Comparatio
+  'salaryRangeSegment', // Salary Range Segment
+  'belowRangeMinimum', // Below Range Minimum?
+  'totalBasePay', // Total Base Pay
+  'salary', // Salary
+  'primaryCompensationBasis', // Primary Compensation Basis
+  'annualCalculatedBasePay', // Annual Calculated Base Pay All Countries
+  'annualCalculatedOTE', // Annual Calculated OTE
+  'salaryGradeMin', // Min Pay Grade Value
+  'salaryGradeMid', // Mid Pay Grade Value
+  'salaryGradeMax', // Max Pay Grade Value
+  'payMixGuidelines', // Pay Mix Guidelines
+  'basePercentOfOTE', // Base % of OTE
+  'ticPercentOfOTE', // TIC % of OTE
+  'currency', // Currency
+  'currencyRateToUSD', // Currency Rate to USD as of Effective Date (USD=1)
+  'lastSalaryChangeDate', // Last Salary Change Date
+  'salesTICStartDate', // Sales TIC Start Date
+  'reviewName', // Review Name
+  'performanceRating', // Overall Performance Rating
+  'futuretalent', // Identified as Future Talent?
+  'movementReadiness', // Movement Readiness
+  'managerId', // Manager Employee Number
+  'managerName', // Manager Full name
+  'latestHireDate', // Latest Hire Date
+  'hireDate', // Original Hire Date
+  'organizationName', // Organization Name
+  'departmentCode', // Employee Cost Center Code
+  'personSystemStatus', // Person System Status
+  'timeType', // Time Type
+  'workerStatus', // Worker Status
+  'scheduledWeeklyHours', // Scheduled Weekly Hours
+  'defaultHours', // Default Hours
+  'fte', // FTE
+  'hourlySalary', // Hourly/Salary
+  'periodSalaryPlan', // Period Salary Plan
+  'jobEntryStartDate', // Job Entry Start Date
+  'exemptionStatus', // Exemption Status
+  'department', // Department - CC Based
+  'location', // Location
+  'countryISO2', // Country ISO2
+  'country', // Country
+  'region', // Region
+  'managerFlag', // Manager Flag
+  'teamLeadFlag', // Team Lead Flag
+  'cltOrg', // CLT Org
+  'level2FullName', // Level2 Full Name
+  'level3FullName', // Level3 Full Name
+  'level4FullName', // Level4 Full Name
+  'level5FullName', // Level5 Full Name
+  'level6FullName', // Level6 Full Name
+  'level7FullName', // Level7 Full Name
+  'level8FullName', // Level8 Full Name
+  'level9FullName', // Level9 Full Name
+  'level10FullName', // Level10 Full Name
+  'level11FullName', // Level11 Full Name
+  'level12FullName', // Level12 Full Name
+  'managementLevel', // Management Level
   
-  // Current compensation
-  'baseSalaryUSD',
-  'baseSalary',
-  'currency',
-  'salaryGrade',
-  'comparatio',
+  // NEW PROPOSED COLUMNS (as requested)
+  'proposedRaisePercent', // Proposed Raise (percent)
+  'proposedSalary', // Proposed Salary
+  'proposedComparatio', // Proposed Comparatio
   
-  // Proposed changes
-  'proposedRaise',
-  'newSalary',
-  'percentChange',
-  'effectiveDate',
-  
-  // Performance and risk factors
-  'performanceRating',
-  'businessImpactScore',
-  'retentionRisk',
-  'timeInRole',
-  'totalTenure',
-  
-  // Dates and tenure
-  'hireDate',
-  'roleStartDate',
-  'lastRaiseDate',
-  'lastPromotionDate',
+  // Additional calculated fields for context
+  'proposedRaiseOriginal', // Proposed Raise (in employee's currency)
+  'percentChange', // Raise Percentage Change
+  'retentionRisk', // Retention Risk
+  'businessImpactScore', // Business Impact Score
+  'timeInRole', // Time in Role
   
   // Policy compliance
   'policyViolations',
   'violationSeverity',
   'approvalRequired',
   
-  // Metadata
-  'lastModified',
-  'modifiedBy',
-  'exportTimestamp'
+  // Export metadata
+  'exportTimestamp',
+  'lastModified'
 ];
 
 export class CSVExporter {
@@ -199,17 +250,75 @@ export class CSVExporter {
   ): any {
     const enriched: any = { ...employee };
 
+    // Always calculate the three new required columns using employee's original currency
+    const currentSalaryUSD = employee.baseSalaryUSD || 0;
+    const currentSalaryOriginal = employee.baseSalary || 0; // Original currency
+    const raiseAmountUSD = employee.proposedRaise || 0;
+    
+    // Convert raise amount from USD back to employee's original currency
+    // The app stores raises in USD for comparison, but export should show values in employee's currency
+    // Calculate conversion rate from the salary difference (original currency / USD)
+    const conversionRate = currentSalaryUSD > 0 ? currentSalaryOriginal / currentSalaryUSD : 1;
+    const raiseAmountOriginal = raiseAmountUSD * conversionRate;
+    
+    // 1. Proposed Raise (percent) - Calculate percentage from raise amount
+    enriched.proposedRaisePercent = currentSalaryOriginal > 0 ? 
+      ((raiseAmountOriginal / currentSalaryOriginal) * 100).toFixed(2) + '%' : '0.00%';
+    
+    // 2. Proposed Salary - Current salary + raise amount (in original currency)
+    enriched.proposedSalary = currentSalaryOriginal + raiseAmountOriginal;
+    
+    // 3. Proposed Comparatio - Calculate new comparatio with proposed salary
+    // Note: salaryGradeMid should be in the same currency as baseSalary
+    const salaryMid = employee.salaryGradeMid || 0;
+    enriched.proposedComparatio = salaryMid > 0 ? 
+      Math.round((enriched.proposedSalary / salaryMid) * 100) + '%' : '0%';
+    
+    // Store the raise amount in original currency for the "Proposed Raise" column
+    enriched.proposedRaiseOriginal = raiseAmountOriginal;
+
     if (config.includeCalculatedFields) {
-      // Calculate new salary and percentage change
-      enriched.newSalary = PolicyValidator.calculateNewSalary(
-        employee.baseSalaryUSD || employee.baseSalary || 0,
-        employee.proposedRaise || 0
-      );
+      // Calculate new salary and percentage change (legacy fields) - using original currency
+      enriched.newSalary = currentSalaryOriginal + raiseAmountOriginal;
       
-      enriched.percentChange = PolicyValidator.calculateRaisePercent(
-        employee.baseSalaryUSD || employee.baseSalary || 0,
-        employee.proposedRaise || 0
-      );
+      enriched.percentChange = currentSalaryOriginal > 0 ? 
+        ((raiseAmountOriginal / currentSalaryOriginal) * 100).toFixed(2) : '0.00';
+
+      // Map original data to match compensation report column names
+      enriched.salary = enriched.baseSalary; // Salary column
+      enriched.totalBasePay = enriched.baseSalary; // Total Base Pay
+      enriched.annualCalculatedBasePay = enriched.baseSalary; // Annual Calculated Base Pay
+      enriched.primaryCompensationBasis = '0.00'; // Default value
+      enriched.annualCalculatedOTE = '0.00'; // Default value
+      enriched.payMixGuidelines = ''; // Default empty
+      enriched.basePercentOfOTE = '0.00%'; // Default value
+      enriched.ticPercentOfOTE = '0.00%'; // Default value
+      enriched.currencyRateToUSD = enriched.currency === 'USD' ? '1' : ''; // Default for USD
+      enriched.salesTIC = '0.00'; // Default value
+      enriched.variableCompPercent = '0.00%'; // Default value
+      enriched.variableCompAmt = '0.00'; // Default value
+      enriched.salesTICStartDate = ''; // Default empty
+      enriched.reviewName = '2024-Q4 Talent Assessment & Calibration'; // Default review name
+      enriched.latestHireDate = enriched.hireDate; // Same as hire date
+      enriched.organizationName = ''; // Default empty
+      enriched.personSystemStatus = 'Regular'; // Default status
+      enriched.timeType = 'Full time'; // Default time type
+      enriched.workerStatus = 'Active'; // Default status
+      enriched.scheduledWeeklyHours = '40'; // Default hours
+      enriched.defaultHours = '40'; // Default hours
+      enriched.fte = '1'; // Default FTE
+      enriched.hourlySalary = 'Salary'; // Default type
+      enriched.periodSalaryPlan = ''; // Default empty
+      enriched.jobEntryStartDate = enriched.roleStartDate; // Same as role start
+      enriched.exemptionStatus = 'EX'; // Default exempt status
+      enriched.department = 'R&D - Research and Development'; // Default department
+      enriched.location = enriched.country === 'US' ? 'Remote US' : 'Remote ' + enriched.country; // Default location
+      enriched.countryISO2 = enriched.country === 'United States' ? 'US' : 
+                            enriched.country === 'India' ? 'IN' : enriched.country; // Map country to ISO2
+      enriched.region = enriched.country === 'US' ? 'NA' : 
+                       enriched.country === 'IN' ? 'APAC' : 'Other'; // Default regions
+      enriched.managerFlag = enriched.managerId ? 'No' : 'No'; // Default not a manager
+      enriched.teamLeadFlag = 'No'; // Default not a team lead
 
       // Calculate tenure information
       if (employee.hireDate) {
@@ -285,42 +394,116 @@ export class CSVExporter {
     return csvRows.join('\n');
   }
 
-  // Format column headers for better readability
+  // Format column headers to match original compensation report format
   private static formatColumnHeader(columnName: string): string {
-    // Convert camelCase to Title Case
+    // Direct mapping to match original RH Compensation Report headers exactly
+    const headerMappings: { [key: string]: string } = {
+      // Original compensation report columns
+      'employeeId': 'Employee Number',
+      'name': 'Employee Full name',
+      'jobFunction': 'Job Function',
+      'jobFamily': 'Job Family',
+      'jobProfile': 'Job Profile',
+      'jobCategory': 'Job Category',
+      'jobTitle': 'Business Title',
+      'jobCode': 'Job Code',
+      'gradeBand': 'Grade Band',
+      'gradePayRegion': 'Grade Pay Region',
+      'compensationGradeProfile': 'Compensation Grade Profile',
+      'baseSalary': 'Base Pay All Countries',
+      'variableCompPercent': 'Variable Comp %',
+      'variableCompAmt': 'Variable Comp Amt (FTE)',
+      'salesTIC': 'Sales TIC',
+      'comparatio': 'Comparatio',
+      'salaryRangeSegment': 'Salary Range Segment',
+      'belowRangeMinimum': 'Below Range Minimum?',
+      'totalBasePay': 'Total Base Pay',
+      'salary': 'Salary',
+      'primaryCompensationBasis': 'Primary Compensation Basis',
+      'annualCalculatedBasePay': 'Annual Calculated Base Pay All Countries',
+      'annualCalculatedOTE': 'Annual Calculated OTE',
+      'salaryGradeMin': 'Min Pay Grade Value',
+      'salaryGradeMid': 'Mid Pay Grade Value',
+      'salaryGradeMax': 'Max Pay Grade Value',
+      'payMixGuidelines': 'Pay Mix Guidelines',
+      'basePercentOfOTE': 'Base % of OTE',
+      'ticPercentOfOTE': 'TIC % of OTE',
+      'currency': 'Currency',
+      'currencyRateToUSD': 'Currency Rate to USD as of Effective Date (USD=1)',
+      'lastSalaryChangeDate': 'Last Salary Change Date',
+      'salesTICStartDate': 'Sales TIC Start Date',
+      'reviewName': 'Review Name',
+      'performanceRating': 'Overall Performance Rating',
+      'futuretalent': 'Identified as Future Talent?',
+      'movementReadiness': 'Movement Readiness',
+      'managerId': 'Manager Employee Number',
+      'managerName': 'Manager Full name',
+      'latestHireDate': 'Latest Hire Date',
+      'hireDate': 'Original Hire Date',
+      'organizationName': 'Organization Name',
+      'departmentCode': 'Employee Cost Center Code',
+      'personSystemStatus': 'Person System Status',
+      'timeType': 'Time Type',
+      'workerStatus': 'Worker Status',
+      'scheduledWeeklyHours': 'Scheduled Weekly Hours',
+      'defaultHours': 'Default Hours',
+      'fte': 'FTE',
+      'hourlySalary': 'Hourly/Salary',
+      'periodSalaryPlan': 'Period Salary Plan',
+      'jobEntryStartDate': 'Job Entry Start Date',
+      'exemptionStatus': 'Exemption Status',
+      'department': 'Department - CC Based',
+      'location': 'Location',
+      'countryISO2': 'Country ISO2',
+      'country': 'Country',
+      'region': 'Region',
+      'managerFlag': 'Manager Flag',
+      'teamLeadFlag': 'Team Lead Flag',
+      'cltOrg': 'CLT Org',
+      'level2FullName': 'Level2 Full Name',
+      'level3FullName': 'Level3 Full Name',
+      'level4FullName': 'Level4 Full Name',
+      'level5FullName': 'Level5 Full Name',
+      'level6FullName': 'Level6 Full Name',
+      'level7FullName': 'Level7 Full Name',
+      'level8FullName': 'Level8 Full Name',
+      'level9FullName': 'Level9 Full Name',
+      'level10FullName': 'Level10 Full Name',
+      'level11FullName': 'Level11 Full Name',
+      'level12FullName': 'Level12 Full Name',
+      'managementLevel': 'Management Level',
+      
+      // NEW PROPOSED COLUMNS (as requested)
+      'proposedRaisePercent': 'Proposed Raise (percent)',
+      'proposedSalary': 'Proposed Salary',
+      'proposedComparatio': 'Proposed Comparatio',
+      
+      // Additional calculated fields
+      'proposedRaiseOriginal': 'Proposed Raise',
+      'percentChange': 'Raise Percentage (%)',
+      'retentionRisk': 'Retention Risk (%)',
+      'businessImpactScore': 'Business Impact Score',
+      'timeInRole': 'Time in Role (Months)',
+      'policyViolations': 'Policy Violations',
+      'violationSeverity': 'Violation Severity',
+      'approvalRequired': 'Approval Required',
+      'exportTimestamp': 'Export Timestamp',
+      'lastModified': 'Last Modified'
+    };
+
+    // Return mapped header or fallback to formatted column name
+    const mappedHeader = headerMappings[columnName];
+    if (mappedHeader) {
+      return mappedHeader;
+    }
+
+    // Fallback: Convert camelCase to Title Case for unmapped columns
     const formatted = columnName
       .replace(/([A-Z])/g, ' $1')
       .replace(/^./, str => str.toUpperCase())
       .trim();
     
-    // Handle special cases
-    const specialCases: { [key: string]: string } = {
-      'Employee Id': 'Employee ID',
-      'Base Salary U S D': 'Base Salary (USD)',
-      'Job Title': 'Job Title',
-      'Department Code': 'Department',
-      'Manager Id': 'Manager ID',
-      'Hire Date': 'Hire Date',
-      'Role Start Date': 'Role Start Date',
-      'Last Raise Date': 'Last Raise Date',
-      'Last Promotion Date': 'Last Promotion Date',
-      'Performance Rating': 'Performance Rating',
-      'Business Impact Score': 'Business Impact Score',
-      'Retention Risk': 'Retention Risk (%)',
-      'Time In Role': 'Time in Role (Months)',
-      'Total Tenure': 'Total Tenure (Months)',
-      'Proposed Raise': 'Proposed Raise (USD)',
-      'New Salary': 'New Salary (USD)',
-      'Percent Change': 'Raise Percentage (%)',
-      'Policy Violations': 'Policy Violations',
-      'Violation Severity': 'Violation Severity',
-      'Approval Required': 'Approval Required',
-      'Export Timestamp': 'Export Timestamp',
-      'Last Modified': 'Last Modified',
-      'Modified By': 'Modified By'
-    };
-
-    return `"${specialCases[formatted] || formatted}"`;
+    return formatted;
   }
 
   // Format individual CSV values with proper escaping
