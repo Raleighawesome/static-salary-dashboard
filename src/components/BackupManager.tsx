@@ -95,6 +95,17 @@ export const BackupManager: React.FC<BackupManagerProps> = ({
     }
   }, []);
 
+  // Export backup to file
+  const handleExportToFile = useCallback(async () => {
+    try {
+      await AutoBackupService.manualExportToFile();
+      alert('✅ Backup file saved successfully!');
+    } catch (error) {
+      const errorMessage = error instanceof Error ? error.message : 'Failed to export backup';
+      alert(`❌ ${errorMessage}`);
+    }
+  }, []);
+
   // Load from public backup
   const handleLoadPublicBackup = useCallback(async () => {
     try {
@@ -242,6 +253,13 @@ export const BackupManager: React.FC<BackupManagerProps> = ({
                 title="Copy backup JSON to clipboard"
               >
                 📋 Copy Backup Content
+              </button>
+              <button
+                className={styles.exportButton}
+                onClick={handleExportToFile}
+                title="Save backup as file to your computer"
+              >
+                💾 Save as File
               </button>
             </div>
             <div className={styles.pathInfo}>

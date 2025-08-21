@@ -93,18 +93,13 @@ export class AutoBackupService {
 
   /**
    * Update backup file in public directory
+   * Note: No longer automatically triggers file save dialogs to avoid interrupting user workflow
    */
   private static async updatePublicBackupFile(backupData: BackupData): Promise<void> {
     try {
-      // In a browser environment, we can't directly write to the file system
-      // Instead, we'll use the File System Access API if available, or provide instructions
-      if ('showSaveFilePicker' in window) {
-        // Use File System Access API (Chrome/Edge)
-        await this.saveWithFileSystemAPI(backupData);
-      } else {
-        // Fallback: Save to a predictable location that can be manually copied
-        await this.saveBackupForManualUpdate(backupData);
-      }
+      // Only save to localStorage and prepare data for manual export
+      // This prevents automatic file save dialogs from interrupting the user
+      await this.saveBackupForManualUpdate(backupData);
     } catch (error) {
       console.error('❌ Public backup file update failed:', error);
       // Fallback to localStorage only
@@ -244,6 +239,40 @@ export class AutoBackupService {
       return JSON.stringify(backupData, null, 2);
     } catch {
       return null;
+    }
+  }
+
+  /**
+   * Manually trigger file save dialog for backup export
+   * This should only be called when user explicitly requests to save a file
+   */
+  static async manualExportToFile(): Promise<void> {
+    const backupStr = localStorage.getItem(this.BACKUP_KEY);
+    if (!backupStr) {
+      throw new Error('No backup data available to export');
+    }
+
+    try {
+      const backupData: BackupData = JSON.parse(backupStr);
+      
+      // Use File System Access API if available
+      if ('showSaveFilePicker' in window) {
+        await this.saveWithFileSystemAPI(backupData);
+      } else {
+        // Fallback: Create download link
+        const blob = new Blob([JSON.stringify(backupData, null, 2)], { type: 'application/json' });
+        const url = URL.createObjectURL(blob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = 'salary_dashboard_backup.json';
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }
+    } catch (error) {
+      console.error('❌ Manual export failed:', error);
+      throw error;
     }
   }
 
