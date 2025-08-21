@@ -17,10 +17,5 @@ export default defineConfig({
       'papaparse',
       'dexie'
     ]
-  },
-  // Additional server configuration for better development experience
-  server: {
-    // Force dependency re-optimization on server restart
-    force: true
   }
 })
