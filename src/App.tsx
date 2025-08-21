@@ -2,12 +2,14 @@ import { useState, useCallback, useEffect } from 'react';
 import { FileUpload } from './components/FileUpload';
 import { Dashboard } from './components/Dashboard';
 import { BackupManager } from './components/BackupManager';
+import { ProposalImporterComponent } from './components/ProposalImporter';
 import { DataProcessor } from './services/dataProcessor';
 import { DataStorageService } from './services/dataStorage';
 import { AutoBackupService, type BackupData } from './services/autoBackup';
 import { TempFieldStorageService } from './services/tempFieldStorage';
 import { CurrencyConverter } from './services/currencyConverter';
 import type { FileUploadResult, Employee } from './types/employee';
+import type { ProposalImportResult } from './services/proposalImporter';
 import './App.css';
 
 function App() {
@@ -213,6 +215,46 @@ function App() {
 
   }, [processedEmployees]);
 
+  // Handle manager proposal imports
+  const handleProposalsImported = useCallback((updatedEmployees: Employee[], result: ProposalImportResult) => {
+    console.log(`📈 Imported ${result.summary.successfulMatches} proposals from managers`);
+    
+    // Update the processed employees with the merged proposals
+    setProcessedEmployees(updatedEmployees);
+    
+    // Create backup after importing proposals
+    AutoBackupService.scheduleBackup(updatedEmployees, totalBudget, budgetCurrency);
+    
+    // Update storage
+    DataStorageService.saveEmployees(updatedEmployees.map(emp => ({
+      employeeId: emp.employeeId,
+      email: emp.email,
+      name: emp.name,
+      country: emp.country,
+      currency: emp.currency,
+      baseSalary: emp.baseSalary,
+      baseSalaryUSD: emp.baseSalaryUSD,
+      comparatio: emp.comparatio,
+      timeInRole: emp.timeInRole,
+      performanceRating: typeof emp.performanceRating === 'string' ? 
+        parseFloat(emp.performanceRating) || undefined : emp.performanceRating,
+      retentionRisk: emp.retentionRisk,
+      proposedRaise: emp.proposedRaise,
+      newSalary: emp.newSalary,
+      percentChange: emp.percentChange,
+      businessImpactScore: emp.businessImpactScore,
+      salaryGradeMin: emp.salaryGradeMin,
+      salaryGradeMid: emp.salaryGradeMid,
+      salaryGradeMax: emp.salaryGradeMax,
+      hireDate: emp.hireDate,
+      roleStartDate: emp.roleStartDate,
+      lastRaiseDate: emp.lastRaiseDate,
+    }))).catch(error => {
+      console.error('❌ Failed to save updated employees:', error);
+    });
+
+  }, [totalBudget, budgetCurrency]);
+
   // Handle data reset
   const handleResetData = useCallback(async () => {
     try {
@@ -411,6 +453,16 @@ function App() {
               onError={handleUploadError}
               maxFileSize={50} // 50MB
             />
+
+            {/* Manager Proposal Importer - Only show if we have employee data */}
+            {processedEmployees.length > 0 && (
+              <div style={{ marginTop: '2rem' }}>
+                <ProposalImporterComponent
+                  employees={processedEmployees}
+                  onProposalsImported={handleProposalsImported}
+                />
+              </div>
+            )}
 
             {/* Backup Manager */}
             <div style={{ marginTop: '2rem' }}>
