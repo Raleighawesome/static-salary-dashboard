@@ -2,7 +2,12 @@ image: node:18
 
 pages:
   stage: deploy
+  tags:
+    - shared-podman
   cache:
+    key:
+      files:
+        - package-lock.json
     paths:
       - node_modules/
   script:
@@ -13,5 +18,5 @@ pages:
   artifacts:
     paths:
       - public
-  only:
-    - main
+  rules:
+    - if: $CI_COMMIT_BRANCH == $CI_DEFAULT_BRANCH
