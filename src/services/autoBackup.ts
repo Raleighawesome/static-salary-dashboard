@@ -93,21 +93,41 @@ export class AutoBackupService {
 
   /**
    * Update backup file in public directory
-   * Note: No longer automatically triggers file save dialogs to avoid interrupting user workflow
+   * DISABLED: No longer performs any file operations to prevent interrupting user workflow
    */
   private static async updatePublicBackupFile(backupData: BackupData): Promise<void> {
-    try {
-      // Only save to localStorage and prepare data for manual export
-      // This prevents automatic file save dialogs from interrupting the user
-      await this.saveBackupForManualUpdate(backupData);
-    } catch (error) {
-      console.error('❌ Public backup file update failed:', error);
-      // Fallback to localStorage only
-    }
+    // DISABLED: All file operations disabled for automatic backups
+    // Only localStorage backup is performed automatically
+    // Users can manually export files through the BackupManager component
+    console.log('📝 Automatic backup saved to localStorage only (file operations disabled)');
+    
+    // Still prepare data for manual export without triggering any file operations
+    this.prepareBackupForManualExport(backupData);
   }
 
   /**
-   * Save using File System Access API (Chrome/Edge)
+   * Prepare backup data for manual export without triggering any file operations
+   */
+  private static prepareBackupForManualExport(backupData: BackupData): void {
+    // Store the backup data in a format that can be easily retrieved for manual export
+    const backupContent = JSON.stringify(backupData, null, 2);
+    
+    // Create a hidden element with the backup content for easy copying
+    const backupElement = document.getElementById('backup-content') || document.createElement('div');
+    backupElement.id = 'backup-content';
+    backupElement.style.display = 'none';
+    backupElement.setAttribute('data-backup', backupContent);
+    
+    if (!document.getElementById('backup-content')) {
+      document.body.appendChild(backupElement);
+    }
+    
+    // Also make it available via a global variable for easy access
+    (window as any).salaryDashboardBackup = backupData;
+  }
+
+  /**
+   * Save using File System Access API (Chrome/Edge) - FOR MANUAL EXPORT ONLY
    */
   private static async saveWithFileSystemAPI(backupData: BackupData): Promise<void> {
     try {
@@ -124,35 +144,14 @@ export class AutoBackupService {
       await writable.write(JSON.stringify(backupData, null, 2));
       await writable.close();
       
-
+      console.log('✅ Backup file saved successfully using File System Access API');
     } catch (error) {
-
+      console.error('❌ File System Access API save failed:', error);
       throw error;
     }
   }
 
-  /**
-   * Save backup in a way that can be manually copied to public directory
-   */
-  private static async saveBackupForManualUpdate(backupData: BackupData): Promise<void> {
-    // Store the backup data in a format that can be easily retrieved
-    const backupContent = JSON.stringify(backupData, null, 2);
-    
-    // Create a hidden element with the backup content for easy copying
-    const backupElement = document.getElementById('backup-content') || document.createElement('div');
-    backupElement.id = 'backup-content';
-    backupElement.style.display = 'none';
-    backupElement.setAttribute('data-backup', backupContent);
-    
-    if (!document.getElementById('backup-content')) {
-      document.body.appendChild(backupElement);
-    }
-    
-    // Also make it available via a global variable for easy access
-    (window as any).salaryDashboardBackup = backupData;
-    
 
-  }
 
   /**
    * Restore data from localStorage backup

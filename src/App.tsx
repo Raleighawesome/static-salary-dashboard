@@ -376,6 +376,35 @@ function App() {
               <h2>📁 Upload Employee Data</h2>
               <p>Upload your salary and performance files to get started</p>
             </div>
+
+            {/* Workday Instructions */}
+            <div className="workday-instructions">
+              <h3>📋 Required Workday Reports</h3>
+              <p>Before uploading, please download these two spreadsheets from Workday:</p>
+              
+              <div className="instructions-list">
+                <div className="instruction-item">
+                  <div className="instruction-number">1</div>
+                  <div className="instruction-content">
+                    <h4>RH Talent Assessment Calibration Audit Report</h4>
+                    <p>Select <strong>"post calibration"</strong> (or <strong>"during calibration"</strong> if in a current calibration cycle)</p>
+                  </div>
+                </div>
+                
+                <div className="instruction-item">
+                  <div className="instruction-number">2</div>
+                  <div className="instruction-content">
+                    <h4>RH Compensation Report w/ Hierarchy - Manager</h4>
+                    <p>Make sure to <strong>uncheck "Direct Reports Only"</strong> if you want your entire organization</p>
+                  </div>
+                </div>
+              </div>
+              
+              <div className="export-instruction">
+                <span className="export-icon">📤</span>
+                <p><strong>After each report generates:</strong> Click the red <strong>"export to excel"</strong> image in the top right corner</p>
+              </div>
+            </div>
             
             <FileUpload
               onFileUpload={handleFileUpload}
