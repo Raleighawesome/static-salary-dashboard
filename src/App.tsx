@@ -6,6 +6,7 @@ import { DataProcessor } from './services/dataProcessor';
 import { DataStorageService } from './services/dataStorage';
 import { AutoBackupService, type BackupData } from './services/autoBackup';
 import { TempFieldStorageService } from './services/tempFieldStorage';
+import { CurrencyConverter } from './services/currencyConverter';
 import type { FileUploadResult, Employee } from './types/employee';
 import './App.css';
 
@@ -36,11 +37,12 @@ function App() {
     };
   }, [processedEmployees, totalBudget, budgetCurrency]);
 
-  // Session recovery on app load
+  // Initialize services and session recovery on app load
   useEffect(() => {
     const recoverSession = async () => {
       try {
-
+        // Initialize currency converter for real-time rates
+        CurrencyConverter.initializeForRealTime();
         
         // Try to get existing employee data
         const existingEmployees = await DataStorageService.getEmployees();

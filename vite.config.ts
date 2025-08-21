@@ -2,17 +2,45 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
 // https://vite.dev/config/
-export default defineConfig(({ command }) => ({
-  // Use relative paths in the production build so the app can be served from a
-  // subdirectory (e.g. GitLab Pages). For local development we keep the root
-  // base to preserve existing behaviour.
-  base: command === 'build' ? './' : '/',
+export default defineConfig({
   plugins: [react()],
+  
+  // Base path for static deployment - can be overridden with --base flag
+  base: './',
+  
+  // Build configuration for static compilation
+  build: {
+    // Generate sourcemaps for debugging
+    sourcemap: true,
+    
+    // Optimize for static serving
+    assetsDir: 'assets',
+    
+    // Ensure all assets use relative paths
+    rollupOptions: {
+      output: {
+        // Organize output files
+        assetFileNames: 'assets/[name]-[hash][extname]',
+        chunkFileNames: 'assets/[name]-[hash].js',
+        entryFileNames: 'assets/[name]-[hash].js',
+      }
+    },
+    
+    // Target modern browsers for better optimization
+    target: 'es2020',
+    
+    // Minify for production
+    minify: 'terser',
+    
+    // Optimize chunk size
+    chunkSizeWarningLimit: 1000
+  },
+  
   optimizeDeps: {
     // Exclude problematic dependencies from Vite's dependency optimization
     exclude: [
       'plotly.js', // Large library that can cause optimization issues
-      '@e965/xlsx' // Excel library that may have compatibility issues
+      '@e965/xlsx'  // Excel library that may have compatibility issues
     ],
     // Force include common dependencies that should be optimized
     include: [
@@ -21,5 +49,17 @@ export default defineConfig(({ command }) => ({
       'papaparse',
       'dexie'
     ]
+  },
+  
+  // Additional server configuration for better development experience
+  server: {
+    // Force dependency re-optimization on server restart
+    force: true
+  },
+  
+  // Preview configuration for testing static build
+  preview: {
+    port: 4173,
+    host: true
   }
-}))
+})

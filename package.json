@@ -6,8 +6,13 @@
   "scripts": {
     "dev": "vite",
     "build": "tsc -b && vite build",
+    "build:static": "vite build --base=./",
+    "build:static:safe": "vite build --base=./ --mode production",
+    "build:github": "vite build --base=/rh-salary-dashboard/",
+    "typecheck": "tsc --noEmit",
     "lint": "eslint .",
     "preview": "vite preview",
+    "preview:static": "vite preview --base=./",
     "test": "jest",
     "test:watch": "jest --watch",
     "test:coverage": "jest --coverage",

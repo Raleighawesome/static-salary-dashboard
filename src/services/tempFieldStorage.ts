@@ -11,8 +11,7 @@ interface TempFieldChange {
 export class TempFieldStorageService {
   private static readonly TEMP_STORAGE_KEY = 'salary_dashboard_temp_changes';
   private static readonly MAX_TEMP_AGE = 5 * 60 * 1000; // 5 minutes
-  // Use browser-friendly timeout type instead of NodeJS.Timeout
-  private static backupTimeout: ReturnType<typeof setTimeout> | null = null;
+  private static backupTimeout: NodeJS.Timeout | null = null;
 
   /**
    * Store a temporary field change

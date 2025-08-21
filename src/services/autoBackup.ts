@@ -18,8 +18,7 @@ export interface BackupData {
 export class AutoBackupService {
   private static readonly BACKUP_KEY = 'salary_dashboard_backup';
   private static readonly BACKUP_FILENAME = '/backup/salary_dashboard_backup.json';
-  // Use browser-compatible timeout type for static deployments
-  private static backupTimeout: ReturnType<typeof setTimeout> | null = null;
+  private static backupTimeout: NodeJS.Timeout | null = null;
   private static lastBackupHash: string = '';
 
   /**
@@ -143,7 +142,7 @@ export class AutoBackupService {
   private static async saveBackupForManualUpdate(backupData: BackupData): Promise<void> {
     // Store the backup data in a format that can be easily retrieved
     const backupContent = JSON.stringify(backupData, null, 2);
-
+    
     // Create a hidden element with the backup content for easy copying
     const backupElement = document.getElementById('backup-content') || document.createElement('div');
     backupElement.id = 'backup-content';
@@ -153,20 +152,11 @@ export class AutoBackupService {
     if (!document.getElementById('backup-content')) {
       document.body.appendChild(backupElement);
     }
-
+    
     // Also make it available via a global variable for easy access
     (window as any).salaryDashboardBackup = backupData;
-    // Trigger a file download so users can manually save the backup
-    const blob = new Blob([backupContent], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = 'salary_dashboard_backup.json';
-    link.style.display = 'none';
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    URL.revokeObjectURL(url);
+    
+
   }
 
   /**
