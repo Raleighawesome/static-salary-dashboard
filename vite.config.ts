@@ -51,11 +51,6 @@ export default defineConfig({
     ]
   },
   
-  // Additional server configuration for better development experience
-  server: {
-    // Force dependency re-optimization on server restart
-    force: true
-  },
   
   // Preview configuration for testing static build
   preview: {
