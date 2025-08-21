@@ -2,13 +2,17 @@ import { defineConfig } from 'vite'
 import react from '@vitejs/plugin-react'
 
 // https://vite.dev/config/
-export default defineConfig({
+export default defineConfig(({ command }) => ({
+  // Use relative paths in the production build so the app can be served from a
+  // subdirectory (e.g. GitLab Pages). For local development we keep the root
+  // base to preserve existing behaviour.
+  base: command === 'build' ? './' : '/',
   plugins: [react()],
   optimizeDeps: {
     // Exclude problematic dependencies from Vite's dependency optimization
     exclude: [
       'plotly.js', // Large library that can cause optimization issues
-      '@e965/xlsx'  // Excel library that may have compatibility issues
+      '@e965/xlsx' // Excel library that may have compatibility issues
     ],
     // Force include common dependencies that should be optimized
     include: [
@@ -18,4 +22,4 @@ export default defineConfig({
       'dexie'
     ]
   }
-})
+}))
