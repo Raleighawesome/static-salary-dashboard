@@ -28,7 +28,6 @@ export interface ProcessingOptions extends JoinOptions {
   skipValidation?: boolean;
   autoGenerateFields?: boolean;
   convertCurrencies?: boolean; // Default: true - convert all salaries to USD
-  currencyApiKey?: string; // Optional API key for real-time rates
 }
 
 export class DataProcessor {
@@ -83,7 +82,6 @@ export class DataProcessor {
       // Initialize currency converter if needed
       if (options.convertCurrencies !== false) {
         CurrencyConverter.initialize({
-          apiKey: options.currencyApiKey,
           fallbackToStaticRates: true,
         });
       }

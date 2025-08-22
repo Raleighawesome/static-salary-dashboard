@@ -17,10 +17,8 @@ export interface CurrencyConversionResult {
 }
 
 export interface CurrencyConverterOptions {
-  apiKey?: string;
   cacheDurationMs?: number; // Default: 1 hour
   fallbackToStaticRates?: boolean; // Default: true
-  retryAttempts?: number; // Default: 3
   timeoutMs?: number; // Default: 5000ms
 }
 
@@ -58,10 +56,8 @@ const FALLBACK_RATES: Record<string, number> = {
 export class CurrencyConverter {
   private static cache = new Map<string, ExchangeRate>();
   private static options: Required<CurrencyConverterOptions> = {
-    apiKey: '',
     cacheDurationMs: 15 * 60 * 1000, // 15 minutes for fresher rates
     fallbackToStaticRates: true,
-    retryAttempts: 5, // More attempts for better live data
     timeoutMs: 8000, // Longer timeout for better API success
   };
 
@@ -74,7 +70,6 @@ export class CurrencyConverter {
     
     console.log('💱 Currency Converter initialized with real-time priority');
     console.log(`   Cache duration: ${this.options.cacheDurationMs / 60000} minutes`);
-    console.log(`   Retry attempts: ${this.options.retryAttempts}`);
   }
 
   // Convert amount from one currency to another
@@ -176,32 +171,19 @@ export class CurrencyConverter {
     fromCurrency: string,
     toCurrency: string
   ): Promise<ExchangeRate | null> {
-    // Try multiple APIs in order of reliability and freshness
-    const apis = [
-      () => this.fetchFromExchangeRateAPI(fromCurrency, toCurrency),
-      () => this.fetchFromExchangeRateHost(fromCurrency, toCurrency),
-      () => this.fetchFromCurrencyBeacon(fromCurrency, toCurrency),
-      () => this.fetchFromFixer(fromCurrency, toCurrency),
-      () => this.fetchFromFreeCurrencyAPI(fromCurrency, toCurrency),
-    ];
+    console.log(`🔄 Fetching live rate for ${fromCurrency} → ${toCurrency}`);
 
-    console.log(`🔄 Fetching live rates for ${fromCurrency} → ${toCurrency}`);
-
-    for (let i = 0; i < apis.length; i++) {
-      const apiCall = apis[i];
-      try {
-        const result = await apiCall();
-        if (result) {
-          console.log(`✅ Got live rate from API ${i + 1}: ${result.rate} (${result.source})`);
-          return result;
-        }
-      } catch (error) {
-        console.warn(`⚠️  API ${i + 1} failed:`, error);
-        continue;
+    try {
+      const result = await this.fetchFromExchangeRateAPI(fromCurrency, toCurrency);
+      if (result) {
+        console.log(`✅ Got live rate: ${result.rate} (${result.source})`);
+        return result;
       }
+    } catch (error) {
+      console.warn(`⚠️  Live rate fetch failed:`, error);
     }
 
-    console.warn(`❌ All APIs failed for ${fromCurrency} → ${toCurrency}`);
+    console.warn(`❌ Live rate unavailable for ${fromCurrency} → ${toCurrency}`);
     return null;
   }
 
@@ -236,193 +218,6 @@ export class CurrencyConverter {
           fromCurrency,
           toCurrency,
           rate: data.rates[toCurrency],
-          timestamp: Date.now(),
-          source: 'api',
-        };
-      }
-
-      return null;
-    } catch (error) {
-      if (error instanceof Error && error.name === 'AbortError') {
-        throw new Error('Request timeout');
-      }
-      throw error;
-    }
-  }
-
-  // Fetch from fixer.io (requires API key for production)
-  private static async fetchFromFixer(
-    fromCurrency: string,
-    toCurrency: string
-  ): Promise<ExchangeRate | null> {
-    if (!this.options.apiKey) {
-      return null; // Skip if no API key
-    }
-
-    const url = `https://api.fixer.io/latest?access_key=${this.options.apiKey}&base=${fromCurrency}&symbols=${toCurrency}`;
-    
-    try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), this.options.timeoutMs);
-
-      const response = await fetch(url, {
-        signal: controller.signal,
-      });
-
-      clearTimeout(timeoutId);
-
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-      }
-
-      const data = await response.json();
-      
-      if (data.success && data.rates && data.rates[toCurrency]) {
-        return {
-          fromCurrency,
-          toCurrency,
-          rate: data.rates[toCurrency],
-          timestamp: Date.now(),
-          source: 'api',
-        };
-      }
-
-      return null;
-    } catch (error) {
-      if (error instanceof Error && error.name === 'AbortError') {
-        throw new Error('Request timeout');
-      }
-      throw error;
-    }
-  }
-
-  // Fetch from exchangerate.host (free, no API key required)
-  private static async fetchFromExchangeRateHost(
-    fromCurrency: string,
-    toCurrency: string
-  ): Promise<ExchangeRate | null> {
-    const url = `https://api.exchangerate.host/convert?from=${fromCurrency}&to=${toCurrency}`;
-    
-    try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), this.options.timeoutMs);
-
-      const response = await fetch(url, {
-        signal: controller.signal,
-        headers: {
-          'Accept': 'application/json',
-        },
-      });
-
-      clearTimeout(timeoutId);
-
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-      }
-
-      const data = await response.json();
-      
-      if (data.success && data.result) {
-        return {
-          fromCurrency,
-          toCurrency,
-          rate: data.result,
-          timestamp: Date.now(),
-          source: 'api',
-        };
-      }
-
-      return null;
-    } catch (error) {
-      if (error instanceof Error && error.name === 'AbortError') {
-        throw new Error('Request timeout');
-      }
-      throw error;
-    }
-  }
-
-  // Fetch from currencybeacon.com (free tier available)
-  private static async fetchFromCurrencyBeacon(
-    fromCurrency: string,
-    toCurrency: string
-  ): Promise<ExchangeRate | null> {
-    const url = `https://api.currencybeacon.com/v1/convert?from=${fromCurrency}&to=${toCurrency}&amount=1`;
-    
-    try {
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), this.options.timeoutMs);
-
-      const response = await fetch(url, {
-        signal: controller.signal,
-        headers: {
-          'Accept': 'application/json',
-        },
-      });
-
-      clearTimeout(timeoutId);
-
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-      }
-
-      const data = await response.json();
-      
-      if (data.response && data.response.value) {
-        return {
-          fromCurrency,
-          toCurrency,
-          rate: data.response.value,
-          timestamp: Date.now(),
-          source: 'api',
-        };
-      }
-
-      return null;
-    } catch (error) {
-      if (error instanceof Error && error.name === 'AbortError') {
-        throw new Error('Request timeout');
-      }
-      throw error;
-    }
-  }
-
-  // Fetch from freecurrencyapi.net (free tier available)
-  private static async fetchFromFreeCurrencyAPI(
-    fromCurrency: string,
-    toCurrency: string
-  ): Promise<ExchangeRate | null> {
-    const url = `https://api.freecurrencyapi.net/v1/latest?apikey=fca_live_YOUR_API_KEY&currencies=${toCurrency}&base_currency=${fromCurrency}`;
-    
-    try {
-      // Skip if no API key is configured
-      if (!this.options.apiKey) {
-        return null;
-      }
-
-      const actualUrl = url.replace('YOUR_API_KEY', this.options.apiKey);
-      const controller = new AbortController();
-      const timeoutId = setTimeout(() => controller.abort(), this.options.timeoutMs);
-
-      const response = await fetch(actualUrl, {
-        signal: controller.signal,
-        headers: {
-          'Accept': 'application/json',
-        },
-      });
-
-      clearTimeout(timeoutId);
-
-      if (!response.ok) {
-        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
-      }
-
-      const data = await response.json();
-      
-      if (data.data && data.data[toCurrency]) {
-        return {
-          fromCurrency,
-          toCurrency,
-          rate: data.data[toCurrency],
           timestamp: Date.now(),
           source: 'api',
         };
@@ -677,19 +472,15 @@ export class CurrencyConverter {
   }
 
   // Initialize with real-time priority settings
-  public static initializeForRealTime(apiKey?: string): void {
+  public static initializeForRealTime(): void {
     this.initialize({
-      apiKey: apiKey || '',
       cacheDurationMs: 10 * 60 * 1000, // 10 minutes for very fresh rates
       fallbackToStaticRates: true,
-      retryAttempts: 6, // More attempts for better success
       timeoutMs: 10000, // Longer timeout for better API success
     });
     
     console.log('🚀 Currency Converter initialized for REAL-TIME priority');
     console.log('   - Cache duration: 10 minutes');
-    console.log('   - Enhanced API retry attempts');
-    console.log('   - Multiple API sources for redundancy');
   }
 
   // Get exchange rate trend (if we had historical data)
