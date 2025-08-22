@@ -91,7 +91,6 @@ const sampleSession: SessionData = {
   },
   processingOptions: {
     convertCurrencies: true,
-    currencyApiKey: '',
     joinStrategy: 'email-first',
   },
 };

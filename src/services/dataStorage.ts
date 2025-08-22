@@ -51,7 +51,6 @@ export interface SessionData {
   };
   processingOptions: {
     convertCurrencies: boolean;
-    currencyApiKey?: string;
     joinStrategy: string;
   };
 }
