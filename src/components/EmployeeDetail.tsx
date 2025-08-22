@@ -49,21 +49,26 @@ export const EmployeeDetail: React.FC<EmployeeDetailProps> = ({
     const baseSalaryUSD = employee.baseSalaryUSD || 0;
     return baseSalaryUSD > 0 ? ((employee.proposedRaise || 0) / baseSalaryUSD) * 100 : 0;
   });
+  const [proposedRaise, setProposedRaise] = useState(employee.proposedRaise || 0);
   const [aiRecommendationApplied, setAiRecommendationApplied] = useState(false);
+
+  useEffect(() => {
+    setProposedRaise(employee.proposedRaise || 0);
+  }, [employee.proposedRaise]);
 
   // Restore temporary values for this employee on mount
   useEffect(() => {
     const tempValue = TempFieldStorageService.getFieldValue(
-      employee.employeeId || employee.id, 
-      'proposedRaise', 
-      employee.proposedRaise || 0
+      employee.employeeId || employee.id,
+      'proposedRaise',
+      proposedRaise
     );
-    if (tempValue !== (employee.proposedRaise || 0)) {
+    if (tempValue !== proposedRaise) {
       // Update percentage when currency amount changes
       const baseSalaryUSD = employee.baseSalaryUSD || 0;
       setTempProposedRaisePercent(baseSalaryUSD > 0 ? (tempValue / baseSalaryUSD) * 100 : 0);
     }
-  }, [employee.employeeId, employee.id, employee.proposedRaise, employee.baseSalaryUSD]);
+  }, [employee.employeeId, employee.id, proposedRaise, employee.baseSalaryUSD]);
 
   // Prevent body scroll when modal is open
   useEffect(() => {
@@ -209,7 +214,8 @@ export const EmployeeDetail: React.FC<EmployeeDetailProps> = ({
     // Convert percentage to currency amount
     const baseSalaryUSD = employee.baseSalaryUSD || 0;
     const currencyAmount = baseSalaryUSD * (tempProposedRaisePercent / 100);
-    
+
+    setProposedRaise(currencyAmount);
     onEmployeeUpdate(employee.employeeId || employee.id, { proposedRaise: currencyAmount });
     // Clear temporary storage since the change has been saved
     TempFieldStorageService.removeTempChange(employee.employeeId || employee.id, 'proposedRaise');
@@ -219,11 +225,11 @@ export const EmployeeDetail: React.FC<EmployeeDetailProps> = ({
   const handleProposedRaiseCancel = useCallback(() => {
     // Reset percentage to match current currency amount
     const baseSalaryUSD = employee.baseSalaryUSD || 0;
-    setTempProposedRaisePercent(baseSalaryUSD > 0 ? ((employee.proposedRaise || 0) / baseSalaryUSD) * 100 : 0);
+    setTempProposedRaisePercent(baseSalaryUSD > 0 ? (proposedRaise / baseSalaryUSD) * 100 : 0);
     // Clear temporary storage since changes are being cancelled
     TempFieldStorageService.removeTempChange(employee.employeeId || employee.id, 'proposedRaise');
     setIsEditingRaise(false);
-  }, [employee.proposedRaise, employee.baseSalaryUSD, employee.employeeId, employee.id]);
+  }, [proposedRaise, employee.baseSalaryUSD, employee.employeeId, employee.id]);
 
   // Handle applying AI recommendation
   const handleApplyAIRecommendation = useCallback(() => {
@@ -238,9 +244,10 @@ export const EmployeeDetail: React.FC<EmployeeDetailProps> = ({
 
       // Store proposedRaise in USD for consistency across the application
       console.log(`🤖 Applying AI recommendation: ${formatCurrencyDisplay(recommendedAmount, 'USD')}`);
-      
+
+      setProposedRaise(recommendedAmount);
       onEmployeeUpdate(employee.employeeId || employee.id, { proposedRaise: recommendedAmount });
-      
+
       // Update percentage to match the applied recommendation
       const baseSalaryUSD = employee.baseSalaryUSD || 0;
       setTempProposedRaisePercent(baseSalaryUSD > 0 ? (recommendedAmount / baseSalaryUSD) * 100 : 0);
@@ -269,10 +276,10 @@ export const EmployeeDetail: React.FC<EmployeeDetailProps> = ({
   // Calculate new salary with proposed raise (convert USD raise to local currency)
   const newSalary = useMemo(() => {
     const proposedRaiseLocal = employee.currency !== 'USD' && employee.baseSalary && employee.baseSalaryUSD && employee.baseSalaryUSD > 0
-      ? (employee.proposedRaise || 0) * (employee.baseSalary / employee.baseSalaryUSD)
-      : (employee.proposedRaise || 0);
+      ? proposedRaise * (employee.baseSalary / employee.baseSalaryUSD)
+      : proposedRaise;
     return analysis.salaryAnalysis.currentSalary + proposedRaiseLocal;
-  }, [analysis.salaryAnalysis.currentSalary, employee.proposedRaise, employee.currency, employee.baseSalary, employee.baseSalaryUSD]);
+  }, [analysis.salaryAnalysis.currentSalary, proposedRaise, employee.currency, employee.baseSalary, employee.baseSalaryUSD]);
 
 
   // Get performance badge (matching EmployeeTable logic)
@@ -313,7 +320,6 @@ export const EmployeeDetail: React.FC<EmployeeDetailProps> = ({
 
   // Calculate new comparatio when there's a proposed raise (matching EmployeeTable logic)
   const newComparatio = useMemo(() => {
-    const proposedRaise = employee.proposedRaise || 0;
     if (proposedRaise <= 0) return 0;
     
     // Use the same logic as EmployeeTable - calculate using original currency
@@ -331,16 +337,15 @@ export const EmployeeDetail: React.FC<EmployeeDetailProps> = ({
     
     // Calculate comparatio using original currency values (matching EmployeeTable.tsx line 302)
     return Math.round((newSalaryOriginal / salaryGradeMid) * 100);
-  }, [employee.proposedRaise, employee.baseSalary, employee.baseSalaryUSD, employee.salaryGradeMid, analysis.salaryAnalysis.salaryGradeMid]);
+  }, [proposedRaise, employee.baseSalary, employee.baseSalaryUSD, employee.salaryGradeMid, analysis.salaryAnalysis.salaryGradeMid]);
 
   // Calculate new segment based on new comparatio after proposed raise
   const newSegment = useMemo(() => {
-    const proposedRaise = employee.proposedRaise || 0;
     if (proposedRaise <= 0) return null;
-    
+
     // Use the already calculated newComparatio
     if (newComparatio <= 0) return null;
-    
+
     // Determine segment based on comparatio ranges
     if (newComparatio < 90) {
       return 'Segment 1';
@@ -349,7 +354,7 @@ export const EmployeeDetail: React.FC<EmployeeDetailProps> = ({
     } else {
       return 'Segment 3';
     }
-  }, [newComparatio]);
+  }, [newComparatio, proposedRaise]);
 
   // Proposed Adjustment Considerations (conditional line items requested)
   const adjustmentConsiderations = useMemo(() => {
@@ -723,29 +728,28 @@ export const EmployeeDetail: React.FC<EmployeeDetailProps> = ({
                   {isEditingRaise ? (
                     <div className={styles.editingControls}>
                       <input
-                        type="number"
-                        value={tempProposedRaisePercent.toFixed(2)}
+                        type="text"
+                        value={tempProposedRaisePercent.toString()}
                         onChange={(e) => {
-                          const newPercentValue = Number(e.target.value);
+                          const rawValue = e.target.value.replace(/[^0-9.]/g, '');
+                          const newPercentValue = rawValue === '' ? 0 : Number(rawValue);
                           setTempProposedRaisePercent(newPercentValue);
-                          
+
                           // Convert to currency for temporary storage
                           const baseSalaryUSD = employee.baseSalaryUSD || 0;
                           const currencyValue = baseSalaryUSD * (newPercentValue / 100);
-                          
+
                           // Store in temporary storage for persistence
                           TempFieldStorageService.storeTempChange(
-                            employee.employeeId || employee.id, 
-                            'proposedRaise', 
-                            currencyValue, 
-                            employee.proposedRaise || 0
+                            employee.employeeId || employee.id,
+                            'proposedRaise',
+                            currencyValue,
+                            proposedRaise
                           );
                         }}
                         className={styles.editInput}
-                        min="0"
-                        max="50"
-                        step="0.5"
-                        placeholder="e.g. 5.0"
+                        placeholder="e.g. 5"
+                        inputMode="numeric"
                       />
                       <span className={styles.percentSymbol}>%</span>
                       <button onClick={handleProposedRaiseSave} className={styles.saveButton}>
@@ -760,19 +764,19 @@ export const EmployeeDetail: React.FC<EmployeeDetailProps> = ({
                       <span className={styles.value}>
                         {(() => {
                           const baseSalaryUSD = employee.baseSalaryUSD || 0;
-                          const percentValue = baseSalaryUSD > 0 ? ((employee.proposedRaise || 0) / baseSalaryUSD) * 100 : 0;
+                          const percentValue = baseSalaryUSD > 0 ? (proposedRaise / baseSalaryUSD) * 100 : 0;
                           return percentValue > 0 ? `${percentValue.toFixed(1)}%` : '0%';
-                        })()} 
+                        })()}
                         <span className={styles.currencyEquivalent}>
-                          ({formatCurrencyDisplay(employee.proposedRaise || 0)})
+                          ({formatCurrencyDisplay(proposedRaise)})
                         </span>
                       </span>
                       <span className={styles.editIcon}>✏️</span>
                     </div>
                   )}
                 </div>
-                
-                {(employee.proposedRaise || 0) > 0 && (
+
+                {proposedRaise > 0 && (
                   <div className={styles.raiseCalculations}>
                     <div className={styles.calculation}>
                       <span className={styles.label}>New Salary:</span>
@@ -780,7 +784,7 @@ export const EmployeeDetail: React.FC<EmployeeDetailProps> = ({
                         {(() => {
                           const originalCurrency = employee.currency || 'USD';
                           const originalSalary = newSalary;
-                          
+
                           // Calculate USD equivalent of new salary
                           const newSalaryUSD = employee.currency !== 'USD' && employee.baseSalary && employee.baseSalaryUSD && employee.baseSalary > 0
                             ? (originalSalary * (employee.baseSalaryUSD / employee.baseSalary))
