@@ -422,7 +422,7 @@ function App() {
             {/* Workday Instructions */}
             <div className="workday-instructions">
               <h3>📋 Required Workday Reports</h3>
-              <p>Please download these two spreadsheets from Workday:</p>
+              <p>Before uploading, please download these two spreadsheets from Workday:</p>
               
               <div className="instructions-list">
                 <div className="instruction-item">
@@ -444,7 +444,7 @@ function App() {
               
               <div className="export-instruction">
                 <span className="export-icon">📤</span>
-                <p><strong>After each report generates in Workday:</strong> Click the red icon in the top right corner. "Export to Excel"</p>
+                <p><strong>After each report generates:</strong> Click the red <strong>"export to excel"</strong> image in the top right corner</p>
               </div>
             </div>
             
