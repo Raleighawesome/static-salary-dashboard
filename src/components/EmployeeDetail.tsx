@@ -507,7 +507,7 @@ export const EmployeeDetail: React.FC<EmployeeDetailProps> = ({
                       if (parsedDate) {
                         const now = new Date();
                         const monthsSince = Math.floor((now.getTime() - parsedDate.getTime()) / (1000 * 60 * 60 * 24 * 30.44));
-                        return `${formattedDate} (${monthsSince} months ago)`;
+                        return `${monthsSince} months ago (${formattedDate})`;
                       }
                       
                       return formattedDate;
@@ -586,28 +586,27 @@ export const EmployeeDetail: React.FC<EmployeeDetailProps> = ({
                   </span>
                 </div>
                 
-                {/* 7. Total Service (4 for non-managers) */}
+                {/* 7. Total Service with Hire Date (4 for non-managers) */}
                 <div className={styles.tenureDetail}>
                   <span className={styles.label}>Total Service:</span>
                   <span className={styles.value}>
                     {analysis.tenureInfo.totalTenureMonths > 0 
-                      ? `${Math.floor(analysis.tenureInfo.totalTenureMonths / 12)} years, ${analysis.tenureInfo.totalTenureMonths % 12} months`
-                      : 'Not Available'}
-                  </span>
-                </div>
-                
-                {/* 8. Hire Date (5 for non-managers) */}
-                <div className={styles.tenureDetail}>
-                  <span className={styles.label}>Hire Date:</span>
-                  <span className={styles.value}>
-                    {EmployeeCalculations.formatDate(
-                      employee.hireDate ||
-                      employee['Latest Hire Date'] ||
-                      employee['hire_date'] ||
-                      employee['start_date'] ||
-                      employee['Hire Date'] ||
-                      employee['Start Date']
-                    )}
+                      ? `${Math.floor(analysis.tenureInfo.totalTenureMonths / 12)} years, ${analysis.tenureInfo.totalTenureMonths % 12} months (${EmployeeCalculations.formatDate(
+                          employee.hireDate ||
+                          employee['Latest Hire Date'] ||
+                          employee['hire_date'] ||
+                          employee['start_date'] ||
+                          employee['Hire Date'] ||
+                          employee['Start Date']
+                        )})`
+                      : `Not Available (${EmployeeCalculations.formatDate(
+                          employee.hireDate ||
+                          employee['Latest Hire Date'] ||
+                          employee['hire_date'] ||
+                          employee['start_date'] ||
+                          employee['Hire Date'] ||
+                          employee['Start Date']
+                        )})`}
                   </span>
                 </div>
               </div>
@@ -615,7 +614,7 @@ export const EmployeeDetail: React.FC<EmployeeDetailProps> = ({
 
             {/* 5. Retention Risk Analysis Card */}
             <div className={styles.card}>
-              <h3 className={styles.cardTitle}>⚠️ Retention Risk Analysis</h3>
+              <h3 className={styles.cardTitle}>⚠️ Retention Risk Analysis (Experimental)</h3>
               <div className={styles.retentionRisk}>
                 <div className={styles.riskScore}>
                   <span className={styles.label}>Risk Level:</span>
@@ -659,7 +658,7 @@ export const EmployeeDetail: React.FC<EmployeeDetailProps> = ({
 
             {/* 7. AI Recommendation Card */}
             <div className={styles.card}>
-              <h3 className={styles.cardTitle}>🤖 AI Recommendation</h3>
+              <h3 className={styles.cardTitle}>🤖 AI Recommendation (Experimental)</h3>
               <div className={styles.recommendation}>
                 <div className={styles.recommendedRaise}>
                   <span className={styles.label}>Recommended Raise:</span>
