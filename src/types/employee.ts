@@ -32,6 +32,10 @@ export interface Employee {
   proposedTalentActions?: string;
   salaryRangeSegment?: string;
   belowRangeMinimum?: string;
+  // Manager-related fields
+  managerFlag?: string;
+  teamLeadFlag?: string;
+  managementLevel?: string;
 }
 
 // Raw data from uploaded CSV files
@@ -59,6 +63,10 @@ export interface SalarySheetRow {
   gradeLevel?: string;
   salaryRangeSegment?: string;
   belowRangeMinimum?: string;
+  // Manager-related fields
+  managerFlag?: string;
+  teamLeadFlag?: string;
+  managementLevel?: string;
 }
 
 export interface PerformanceSheetRow {

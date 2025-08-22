@@ -1,10 +1,13 @@
 import React, { useState, useMemo, useCallback, useEffect } from 'react';
 import { EmployeeCalculations } from '../utils/calculations';
 import { TempFieldStorageService } from '../services/tempFieldStorage';
+import { SpanOfControlCalculator } from '../utils/spanOfControl';
+import type { Employee } from '../types/employee';
 import styles from './EmployeeDetail.module.css';
 
 interface EmployeeDetailProps {
   employee: any;
+  allEmployees: Employee[]; // Full employee list for span of control calculation
   onClose: () => void;
   onEmployeeUpdate: (employeeId: string, updates: any) => void;
   budgetCurrency: string;
@@ -14,6 +17,7 @@ interface EmployeeDetailProps {
 
 export const EmployeeDetail: React.FC<EmployeeDetailProps> = ({
   employee,
+  allEmployees,
   onClose,
   onEmployeeUpdate,
   budgetCurrency,
@@ -180,13 +184,20 @@ export const EmployeeDetail: React.FC<EmployeeDetailProps> = ({
       budgetConstraints
     );
 
+    // Calculate span of control for managers
+    const spanOfControl = SpanOfControlCalculator.calculateSpanOfControl(
+      enhancedEmployee,
+      allEmployees
+    );
+
     return {
       tenureInfo,
       salaryAnalysis,
       retentionRisk,
       raiseRecommendation,
+      spanOfControl,
     };
-  }, [employee, totalBudget, currentBudgetUsage]);
+  }, [employee, allEmployees, totalBudget, currentBudgetUsage]);
 
 
   // Handle proposed raise editing
@@ -510,36 +521,7 @@ export const EmployeeDetail: React.FC<EmployeeDetailProps> = ({
             <div className={styles.card}>
               <h3 className={styles.cardTitle}>🕒 Tenure & Experience</h3>
               <div className={styles.tenureInfo}>
-                <div className={styles.tenureDetail}>
-                  <span className={styles.label}>Total Service:</span>
-                  <span className={styles.value}>
-                    {analysis.tenureInfo.totalTenureMonths > 0 
-                      ? `${Math.floor(analysis.tenureInfo.totalTenureMonths / 12)} years, ${analysis.tenureInfo.totalTenureMonths % 12} months`
-                      : 'Not Available'}
-                  </span>
-                </div>
-                <div className={styles.tenureDetail}>
-                  <span className={styles.label}>Time in Role:</span>
-                  <span className={styles.value}>
-                    {analysis.tenureInfo.timeInRoleMonths > 0 
-                      ? `${Math.floor(analysis.tenureInfo.timeInRoleMonths / 12)} years, ${analysis.tenureInfo.timeInRoleMonths % 12} months`
-                      : 'Not Available'
-                    }
-                  </span>
-                </div>
-                <div className={styles.tenureDetail}>
-                  <span className={styles.label}>Hire Date:</span>
-                  <span className={styles.value}>
-                    {EmployeeCalculations.formatDate(
-                      employee.hireDate ||
-                      employee['Latest Hire Date'] ||
-                      employee['hire_date'] ||
-                      employee['start_date'] ||
-                      employee['Hire Date'] ||
-                      employee['Start Date']
-                    )}
-                  </span>
-                </div>
+                {/* 1. Role Start Date - Always first */}
                 <div className={styles.tenureDetail}>
                   <span className={styles.label}>Role Start Date:</span>
                   <span className={styles.value}>
@@ -553,20 +535,81 @@ export const EmployeeDetail: React.FC<EmployeeDetailProps> = ({
                     )}
                   </span>
                 </div>
+                
+                {/* 2. Time in Role - Always second */}
+                <div className={styles.tenureDetail}>
+                  <span className={styles.label}>Time in Role:</span>
+                  <span className={styles.value}>
+                    {analysis.tenureInfo.timeInRoleMonths > 0 
+                      ? `${Math.floor(analysis.tenureInfo.timeInRoleMonths / 12)} years, ${analysis.tenureInfo.timeInRoleMonths % 12} months`
+                      : 'Not Available'
+                    }
+                  </span>
+                </div>
+                
+                {/* Manager-specific fields: 3. Direct Reports, 4. Managers Under, 5. Total Team Size */}
+                {(analysis.spanOfControl.isManager || analysis.spanOfControl.isTeamLead) && (
+                  <>
+                    <div className={styles.tenureDetail}>
+                      <span className={styles.label}>Direct Reports:</span>
+                      <span className={styles.value}>
+                        {analysis.spanOfControl.directReports} employee{analysis.spanOfControl.directReports === 1 ? '' : 's'}
+                      </span>
+                    </div>
+                    {analysis.spanOfControl.managersUnder > 0 && (
+                      <div className={styles.tenureDetail}>
+                        <span className={styles.label}>Managers Under:</span>
+                        <span className={styles.value}>
+                          {analysis.spanOfControl.managersUnder} manager{analysis.spanOfControl.managersUnder === 1 ? '' : 's'}
+                        </span>
+                      </div>
+                    )}
+                    {analysis.spanOfControl.totalTeamSize > analysis.spanOfControl.directReports && (
+                      <div className={styles.tenureDetail}>
+                        <span className={styles.label}>Total Team Size:</span>
+                        <span className={`${styles.value} ${styles.teamSize}`}>
+                          {analysis.spanOfControl.totalTeamSize} people
+                          <span className={styles.teamBreakdown}>
+                            ({analysis.spanOfControl.directReports} direct, {analysis.spanOfControl.totalTeamSize - analysis.spanOfControl.directReports} indirect)
+                          </span>
+                        </span>
+                      </div>
+                    )}
+                  </>
+                )}
+                
+                {/* 6. Experience Level (3 for non-managers) */}
                 <div className={styles.tenureDetail}>
                   <span className={styles.label}>Experience Level:</span>
                   <span className={`${styles.value} ${styles[analysis.tenureInfo.tenureBand.toLowerCase()]}`}>
                     {analysis.tenureInfo.tenureBand}
                   </span>
                 </div>
-                {analysis.tenureInfo.lastRaiseMonthsAgo && analysis.tenureInfo.lastRaiseMonthsAgo > 0 && (
-                  <div className={styles.tenureDetail}>
-                    <span className={styles.label}>Last Raise:</span>
-                    <span className={styles.value}>
-                      {analysis.tenureInfo.lastRaiseMonthsAgo} months ago
-                    </span>
-                  </div>
-                )}
+                
+                {/* 7. Total Service (4 for non-managers) */}
+                <div className={styles.tenureDetail}>
+                  <span className={styles.label}>Total Service:</span>
+                  <span className={styles.value}>
+                    {analysis.tenureInfo.totalTenureMonths > 0 
+                      ? `${Math.floor(analysis.tenureInfo.totalTenureMonths / 12)} years, ${analysis.tenureInfo.totalTenureMonths % 12} months`
+                      : 'Not Available'}
+                  </span>
+                </div>
+                
+                {/* 8. Hire Date (5 for non-managers) */}
+                <div className={styles.tenureDetail}>
+                  <span className={styles.label}>Hire Date:</span>
+                  <span className={styles.value}>
+                    {EmployeeCalculations.formatDate(
+                      employee.hireDate ||
+                      employee['Latest Hire Date'] ||
+                      employee['hire_date'] ||
+                      employee['start_date'] ||
+                      employee['Hire Date'] ||
+                      employee['Start Date']
+                    )}
+                  </span>
+                </div>
               </div>
             </div>
 

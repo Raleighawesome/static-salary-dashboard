@@ -151,6 +151,7 @@
 
 .currentSalary,
 .comparatio,
+.lastRaise,
 .marketPosition,
 .tenureDetail,
 .performanceDetail {
@@ -163,10 +164,29 @@
 
 .currentSalary:last-child,
 .comparatio:last-child,
+.lastRaise:last-child,
 .marketPosition:last-child,
 .tenureDetail:last-child,
 .performanceDetail:last-child {
   border-bottom: none;
+}
+
+/* Span of Control Styles */
+.managerRole {
+  font-weight: 600;
+  color: #3b82f6;
+}
+
+.teamSize {
+  font-weight: 600;
+  color: #059669;
+}
+
+.teamBreakdown {
+  font-size: 0.8em;
+  color: #6b7280;
+  font-weight: 400;
+  margin-left: 8px;
 }
 
 /* Talent Actions Expandable Section */

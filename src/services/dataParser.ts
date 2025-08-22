@@ -131,6 +131,17 @@ const SALARY_COLUMN_MAPPINGS: Record<string, keyof SalarySheetRow> = {
   'direct manager': 'managerName',
   'supervisor': 'managerName',
   'grade band': 'gradeLevel',
+  
+  // Manager flags and levels - RH format specific
+  'manager flag': 'managerFlag',
+  'manager_flag': 'managerFlag',
+  'is_manager': 'managerFlag',
+  'team lead flag': 'teamLeadFlag',
+  'team_lead_flag': 'teamLeadFlag',
+  'is_team_lead': 'teamLeadFlag',
+  'management level': 'managementLevel',
+  'management_level': 'managementLevel',
+  'position_level': 'managementLevel',
   'grade_band': 'gradeLevel',
   'compensation grade profile': 'gradeLevel',
   

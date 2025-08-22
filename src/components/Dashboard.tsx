@@ -422,6 +422,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
         {selectedEmployee && (
           <EmployeeDetail
             employee={selectedEmployee}
+            allEmployees={employeeData}
             onClose={handleCloseDetails}
             onEmployeeUpdate={onEmployeeUpdate}
             budgetCurrency={budgetCurrency}
