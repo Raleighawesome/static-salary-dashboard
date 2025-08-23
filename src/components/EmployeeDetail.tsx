@@ -554,7 +554,8 @@ export const EmployeeDetail: React.FC<EmployeeDetailProps> = ({
                 
                 {/* Manager-specific fields: 3. Direct Reports, 4. Managers Under, 5. Total Team Size */}
                 {(analysis.spanOfControl.isManager || analysis.spanOfControl.isTeamLead) && (
-                  <>
+                  <div className={styles.spanOfControlGroup}>
+                    <h5 className={styles.spanOfControlTitle}>Span of control</h5>
                     <div className={styles.tenureDetail}>
                       <span className={styles.label}>Direct Reports:</span>
                       <span className={styles.value}>
@@ -580,7 +581,7 @@ export const EmployeeDetail: React.FC<EmployeeDetailProps> = ({
                         </span>
                       </div>
                     )}
-                  </>
+                  </div>
                 )}
                 
                 {/* 6. Experience Level (3 for non-managers) */}
@@ -790,20 +791,23 @@ export const EmployeeDetail: React.FC<EmployeeDetailProps> = ({
                             ? (originalSalary * (employee.baseSalaryUSD / employee.baseSalary))
                             : originalSalary;
                           
-                          // For non-USD employees, show original currency first, USD in parentheses
+                          // Always show USD first
+                          const usdDisplay = formatCurrencyDisplay(newSalaryUSD, 'USD');
+                          
+                          // For non-USD employees, show original currency in parentheses below
                           if (originalCurrency !== 'USD') {
                             return (
                               <>
-                                {formatCurrencyDisplay(originalSalary, originalCurrency)}
+                                {usdDisplay}
                                 <div className={styles.originalCurrency}>
-                                  ({formatCurrencyDisplay(newSalaryUSD, 'USD')})
+                                  ({formatCurrencyDisplay(originalSalary, originalCurrency)})
                                 </div>
                               </>
                             );
                           }
                           
                           // For USD employees, just show USD
-                          return formatCurrencyDisplay(originalSalary, 'USD');
+                          return usdDisplay;
                         })()}
                       </span>
                     </div>
@@ -834,7 +838,7 @@ export const EmployeeDetail: React.FC<EmployeeDetailProps> = ({
 
                 {adjustmentConsiderations.length > 0 && (
                   <div className={styles.considerations}>
-                    <h4 className={styles.considerationsTitle}>Considerations</h4>
+                    <h4 className={styles.considerationsTitle}>Merit increase guidance</h4>
                     <ul className={styles.considerationsList}>
                       {adjustmentConsiderations.map((item, idx) => (
                         <li key={idx} className={`${styles.considerationItem} ${styles[item.severity]}`}>
@@ -892,7 +896,7 @@ export const EmployeeDetail: React.FC<EmployeeDetailProps> = ({
                     </span>
                   </div>
                   <div className={styles.rangeDetail}>
-                    <span className={styles.label}>Room for Growth:</span>
+                    <span className={styles.label}>Amount to next segment:</span>
                     <span className={styles.value}>
                       {formatCurrencyDisplay(analysis.salaryAnalysis.roomForGrowth)}
                     </span>

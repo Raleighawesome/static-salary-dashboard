@@ -26,7 +26,7 @@ export interface SalaryAnalysis {
   salaryGradeMax: number;
   comparatio: number;
   positionInRange: 'Below Range' | 'Low' | 'Target' | 'High' | 'Above Range';
-  roomForGrowth: number; // Dollars to midpoint or max
+  roomForGrowth: number; // Amount to reach next salary segment
   marketPosition: 'Below Market' | 'Competitive' | 'Above Market';
 }
 
@@ -280,10 +280,18 @@ export class EmployeeCalculations {
     else if (currentSalary <= salaryGradeMax) positionInRange = 'High';
     else positionInRange = 'Above Range';
 
-    // Calculate room for growth
-    const roomForGrowth = positionInRange === 'Below Range' || positionInRange === 'Low'
-      ? salaryGradeMid - currentSalary
-      : salaryGradeMax - currentSalary;
+    // Calculate amount to next segment
+    let roomForGrowth: number;
+    if (positionInRange === 'Below Range' || comparatio < 90) {
+      // Segment 1: Amount to reach Segment 2 (90% comparatio)
+      roomForGrowth = Math.max(0, (salaryGradeMid * 0.9) - currentSalary);
+    } else if (comparatio <= 110) {
+      // Segment 2: Amount to reach Segment 3 (110% comparatio)
+      roomForGrowth = Math.max(0, (salaryGradeMid * 1.1) - currentSalary);
+    } else {
+      // Segment 3: Amount to grade maximum (already at top segment)
+      roomForGrowth = Math.max(0, salaryGradeMax - currentSalary);
+    }
 
     // Determine market position
     let marketPosition: SalaryAnalysis['marketPosition'];
