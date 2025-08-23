@@ -92,6 +92,10 @@
   background: linear-gradient(90deg, #06b6d4, #0891b2);
 }
 
+.raiseCard::before {
+  background: linear-gradient(90deg, #6366f1, #4338ca);
+}
+
 /* Card Header */
 .cardHeader {
   display: flex;
@@ -234,6 +238,46 @@
   font-weight: 500;
   text-transform: uppercase;
   letter-spacing: 0.05em;
+}
+
+/* Employee list for raise recency card */
+.employeeList {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 0.5rem;
+}
+
+.employeeItem {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.5rem;
+  background: #f8fafc;
+  border-radius: 0.5rem;
+  border: 1px solid #e2e8f0;
+}
+
+.employeeLink {
+  background: none;
+  border: none;
+  padding: 0;
+  font-size: 0.875rem;
+  color: #3b82f6;
+  cursor: pointer;
+  text-align: left;
+}
+
+.employeeLink:hover {
+  text-decoration: underline;
+}
+
+.employeeMonths {
+  font-size: 0.875rem;
+  font-weight: 600;
+  color: #1e293b;
 }
 
 /* Responsive Design */
