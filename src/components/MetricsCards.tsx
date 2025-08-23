@@ -1,5 +1,6 @@
 import React, { useMemo } from 'react';
 import styles from './MetricsCards.module.css';
+import { EmployeeCalculations } from '../utils/calculations';
 
 interface BudgetMetrics {
   totalCurrentSalary: number;
@@ -15,6 +16,7 @@ interface MetricsCardsProps {
   budgetCurrency: string;
   budgetMetrics: BudgetMetrics;
   employeeData: any[];
+  onEmployeeSelect?: (employee: any) => void;
 }
 
 export const MetricsCards: React.FC<MetricsCardsProps> = ({
@@ -23,14 +25,26 @@ export const MetricsCards: React.FC<MetricsCardsProps> = ({
   budgetCurrency,
   budgetMetrics,
   employeeData,
+  onEmployeeSelect,
 }) => {
   // Calculate additional metrics
   const additionalMetrics = useMemo(() => {
+    // Helper to safely extract field values with fallbacks
+    const extractField = (emp: any, fields: string[]): any => {
+      for (const field of fields) {
+        const value = emp[field];
+        if (value !== undefined && value !== null && value !== '') {
+          return value;
+        }
+      }
+      return undefined;
+    };
+
     // Performance distribution
     const performanceRatings = employeeData
       .map(emp => emp.performanceRating)
       .filter(rating => rating && rating > 0);
-    
+
     const avgPerformance = performanceRatings.length > 0
       ? performanceRatings.reduce((sum, rating) => sum + rating, 0) / performanceRatings.length
       : 0;
@@ -39,29 +53,67 @@ export const MetricsCards: React.FC<MetricsCardsProps> = ({
     const comparatios = employeeData
       .map(emp => emp.comparatio)
       .filter(comp => comp && comp > 0);
-    
+
     const avgComparatio = comparatios.length > 0
       ? comparatios.reduce((sum, comp) => sum + comp, 0) / comparatios.length
       : 0;
 
     // Employees with raises
-    const employeesWithRaises = employeeData.filter(emp => 
+    const employeesWithRaises = employeeData.filter(emp =>
       emp.proposedRaise && emp.proposedRaise > 0
     ).length;
 
     // High performers (rating >= 4.0)
-    const highPerformers = employeeData.filter(emp => 
+    const highPerformers = employeeData.filter(emp =>
       emp.performanceRating && emp.performanceRating >= 4.0
     ).length;
 
     // At-risk employees (low comparatio or high retention risk)
-    const atRiskEmployees = employeeData.filter(emp => 
-      (emp.comparatio && emp.comparatio < 0.8) || 
+    const atRiskEmployees = employeeData.filter(emp =>
+      (emp.comparatio && emp.comparatio < 0.8) ||
       (emp.retentionRisk && emp.retentionRisk > 70)
     ).length;
 
     // Currency distribution
     const currencies = new Set(employeeData.map(emp => emp.currency).filter(Boolean));
+
+    // Tenure and raise timing analysis
+    const tenureData = employeeData.map(emp => {
+      const hireDate = extractField(emp, [
+        'Latest Hire Date', 'hireDate', 'hire_date', 'start_date', 'Hire Date', 'Start Date'
+      ]);
+      const roleStart = extractField(emp, [
+        'Job Entry Start Date', 'roleStartDate', 'role_start_date', 'current_role_start',
+        'Role Start Date', 'Current Role Start'
+      ]);
+      const lastRaise = extractField(emp, [
+        'Last Increase Date', 'lastRaiseDate', 'last_raise_date', 'lastRaise', 'Last Raise Date'
+      ]);
+
+      const tenure = EmployeeCalculations.calculateTenure(hireDate, roleStart, lastRaise);
+      return { employee: emp, tenure };
+    });
+
+    const overdueEmployees = tenureData.filter(({ tenure }) => {
+      const months = tenure.lastRaiseMonthsAgo ?? tenure.timeInRoleMonths;
+      return months !== undefined && months > 18;
+    });
+
+    const overdue24 = overdueEmployees.filter(({ tenure }) => {
+      const months = tenure.lastRaiseMonthsAgo ?? tenure.timeInRoleMonths;
+      return months > 24;
+    });
+
+    const overdueList = overdueEmployees
+      .sort((a, b) => (
+        (b.tenure.lastRaiseMonthsAgo ?? b.tenure.timeInRoleMonths) -
+        (a.tenure.lastRaiseMonthsAgo ?? a.tenure.timeInRoleMonths)
+      ))
+      .slice(0, 5)
+      .map(({ employee, tenure }) => ({
+        employee,
+        months: tenure.lastRaiseMonthsAgo ?? tenure.timeInRoleMonths,
+      }));
 
     return {
       avgPerformance,
@@ -70,6 +122,9 @@ export const MetricsCards: React.FC<MetricsCardsProps> = ({
       highPerformers,
       atRiskEmployees,
       currencyCount: currencies.size,
+      overdueCount18: overdueEmployees.length,
+      overdueCount24: overdue24.length,
+      overdueList,
     };
   }, [employeeData]);
 
@@ -286,6 +341,55 @@ export const MetricsCards: React.FC<MetricsCardsProps> = ({
                 </span>
               </div>
             </div>
+          </div>
+        </div>
+
+        {/* Raise Recency Card */}
+        <div className={`${styles.metricCard} ${styles.raiseCard}`}>
+          <div className={styles.cardHeader}>
+            <div className={styles.cardIcon}>⏱️</div>
+            <div className={styles.cardTitle}>Raise Review Needed</div>
+          </div>
+          <div className={styles.cardContent}>
+            <div className={styles.primaryMetric}>
+              <div className={styles.metricValue}>{additionalMetrics.overdueCount18}</div>
+              <div className={styles.metricLabel}>Over 18 Months</div>
+            </div>
+            <div className={styles.secondaryMetrics}>
+              <div className={styles.secondaryMetric}>
+                <span className={styles.secondaryLabel}>Over 24 Months:</span>
+                <span className={styles.secondaryValue}>{additionalMetrics.overdueCount24}</span>
+              </div>
+            </div>
+            {additionalMetrics.overdueList.length > 0 && (
+              <ul className={styles.employeeList}>
+                {additionalMetrics.overdueList.map(({ employee, months }) => {
+                  const name =
+                    employee.name ||
+                    employee.employeeName ||
+                    employee.fullName ||
+                    employee['Employee Name'] ||
+                    'Unknown';
+                  const id =
+                    employee.employeeId ||
+                    employee.id ||
+                    employee.email ||
+                    name;
+                  return (
+                    <li key={id} className={styles.employeeItem}>
+                      <button
+                        type="button"
+                        className={styles.employeeLink}
+                        onClick={() => onEmployeeSelect && onEmployeeSelect(employee)}
+                      >
+                        {name}
+                      </button>
+                      <span className={styles.employeeMonths}>{months} mo</span>
+                    </li>
+                  );
+                })}
+              </ul>
+            )}
           </div>
         </div>
 
