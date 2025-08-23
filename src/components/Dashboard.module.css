@@ -131,6 +131,10 @@
   width: 100%;
 }
 
+.violationSummary {
+  margin: 1rem 0;
+}
+
 .metricsSection {
   background: white;
   border-radius: 1rem;

@@ -1,0 +1,51 @@
+.card {
+  background: #fff3cd;
+  border: 1px solid #ffeeba;
+  border-radius: 0.5rem;
+  padding: 1rem;
+}
+
+.title {
+  margin: 0 0 0.5rem 0;
+  font-weight: 600;
+  color: #92400e;
+}
+
+.typeSection {
+  margin-bottom: 0.5rem;
+}
+
+.typeHeader {
+  display: flex;
+  width: 100%;
+  background: none;
+  border: none;
+  cursor: pointer;
+  padding: 0.25rem 0;
+  align-items: center;
+}
+
+.typeName {
+  flex: 1;
+  text-align: left;
+  text-transform: capitalize;
+}
+
+.typeCount {
+  margin-left: 0.5rem;
+  font-weight: 600;
+}
+
+.expandIcon {
+  margin-left: 0.5rem;
+}
+
+.employeeList {
+  list-style: disc;
+  margin: 0.25rem 0 0.5rem 1.5rem;
+  padding: 0;
+}
+
+.employeeItem {
+  margin: 0.25rem 0;
+}
