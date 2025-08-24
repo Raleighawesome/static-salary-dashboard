@@ -4,6 +4,7 @@ import { BudgetInput } from './BudgetInput';
 import { BudgetSummary } from './BudgetSummary';
 import { MetricsHeatMap } from './MetricsHeatMap';
 import { EmployeeTable } from './EmployeeTable';
+import { MetricsCards } from './MetricsCards';
 import EmployeeDetail from './EmployeeDetail';
 import PolicyViolationAlert from './PolicyViolationAlert';
 import PolicyViolationSummary from './PolicyViolationSummary';
@@ -22,6 +23,14 @@ interface DashboardProps {
   onBudgetChange: (budget: number, currency: string) => void;
 }
 
+type EmployeeFilter =
+  | 'all'
+  | 'withRaises'
+  | 'highPerformers'
+  | 'atRisk'
+  | 'belowRange'
+  | 'aboveRange';
+
 export const Dashboard: React.FC<DashboardProps> = ({
   employeeData,
   uploadedFiles,
@@ -35,6 +44,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
   // View state
   const [currentView, setCurrentView] = useState<'overview' | 'table'>('overview');
   const [selectedEmployee, setSelectedEmployee] = useState<any>(null);
+  const [tableFilter, setTableFilter] = useState<EmployeeFilter>('all');
   
   // Export and validation state
   const [showPolicyAlert, setShowPolicyAlert] = useState(false);
@@ -204,8 +214,14 @@ export const Dashboard: React.FC<DashboardProps> = ({
   }, []);
 
   const switchToTable = useCallback(() => {
+    setTableFilter('all');
     setCurrentView('table');
     setSelectedEmployee(null);
+  }, []);
+
+  const handleQuickFilter = useCallback((filter: EmployeeFilter) => {
+    setTableFilter(filter);
+    setCurrentView('table');
   }, []);
 
   // Handle closing detail view
@@ -386,6 +402,19 @@ export const Dashboard: React.FC<DashboardProps> = ({
                 <PolicyViolationSummary violations={importViolations} />
               </div>
             )}
+            
+            {/* Metrics Cards */}
+            <div className={styles.metricsSection}>
+              <MetricsCards
+                totalEmployees={employeeData.length}
+                totalBudget={totalBudget}
+                budgetCurrency={budgetCurrency}
+                budgetMetrics={budgetMetrics}
+                employeeData={employeeData}
+                onEmployeeSelect={handleEmployeeSelect}
+                onQuickFilter={handleQuickFilter}
+              />
+            </div>
 
             {/* Metrics Heat Map */}
             <div className={styles.heatMapSection}>
@@ -438,6 +467,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
               budgetCurrency={budgetCurrency}
               totalBudget={totalBudget}
               currentBudgetUsage={budgetMetrics.totalProposedRaises}
+              initialFilterBy={tableFilter}
             />
           </div>
         )}

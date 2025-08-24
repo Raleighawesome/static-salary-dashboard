@@ -17,6 +17,7 @@ interface MetricsCardsProps {
   budgetMetrics: BudgetMetrics;
   employeeData: any[];
   onEmployeeSelect?: (employee: any) => void;
+  onQuickFilter?: (filter: 'belowRange' | 'aboveRange') => void;
 }
 
 export const MetricsCards: React.FC<MetricsCardsProps> = ({
@@ -26,6 +27,7 @@ export const MetricsCards: React.FC<MetricsCardsProps> = ({
   budgetMetrics,
   employeeData,
   onEmployeeSelect,
+  onQuickFilter,
 }) => {
   // Calculate additional metrics
   const additionalMetrics = useMemo(() => {
@@ -115,6 +117,21 @@ export const MetricsCards: React.FC<MetricsCardsProps> = ({
         months: tenure.lastRaiseMonthsAgo ?? tenure.timeInRoleMonths,
       }));
 
+    // Salary range breaches
+    const { belowRange, aboveRange } = employeeData.reduce(
+      (acc, emp) => {
+        const base = typeof emp.baseSalary === 'number' ? emp.baseSalary : emp.baseSalaryUSD;
+        const min = emp.salaryGradeMin;
+        const max = emp.salaryGradeMax;
+        if (typeof base === 'number') {
+          if (typeof min === 'number' && base < min) acc.belowRange += 1;
+          if (typeof max === 'number' && base > max) acc.aboveRange += 1;
+        }
+        return acc;
+      },
+      { belowRange: 0, aboveRange: 0 }
+    );
+
     return {
       avgPerformance,
       avgComparatio,
@@ -125,6 +142,7 @@ export const MetricsCards: React.FC<MetricsCardsProps> = ({
       overdueCount18: overdueEmployees.length,
       overdueCount24: overdue24.length,
       overdueList,
+      rangeBreaches: { belowRange, aboveRange },
     };
   }, [employeeData]);
 
@@ -307,6 +325,48 @@ export const MetricsCards: React.FC<MetricsCardsProps> = ({
           </div>
         </div>
 
+        {/* Range Breaches Card */}
+        <div className={`${styles.metricCard} ${styles.rangeCard}`}>
+          <div className={styles.cardHeader}>
+            <div className={styles.cardIcon}>📏</div>
+            <div className={styles.cardTitle}>Range Breaches</div>
+          </div>
+          <div className={styles.cardContent}>
+            <div className={styles.primaryMetric}>
+              <div className={styles.metricValue}>
+                {additionalMetrics.rangeBreaches.belowRange + additionalMetrics.rangeBreaches.aboveRange}
+              </div>
+              <div className={styles.metricLabel}>Total Breaches</div>
+            </div>
+            <div className={styles.secondaryMetrics}>
+              <div
+                className={`${styles.secondaryMetric} ${styles.clickable}`}
+                onClick={() => onQuickFilter?.('belowRange')}
+              >
+                <span className={styles.secondaryLabel}>Below Min:</span>
+                <span className={styles.secondaryValue}>
+                  {additionalMetrics.rangeBreaches.belowRange}{' '}
+                  ({totalEmployees > 0
+                    ? ((additionalMetrics.rangeBreaches.belowRange / totalEmployees) * 100).toFixed(1)
+                    : '0.0'}%)
+                </span>
+              </div>
+              <div
+                className={`${styles.secondaryMetric} ${styles.clickable}`}
+                onClick={() => onQuickFilter?.('aboveRange')}
+              >
+                <span className={styles.secondaryLabel}>Above Max:</span>
+                <span className={styles.secondaryValue}>
+                  {additionalMetrics.rangeBreaches.aboveRange}{' '}
+                  ({totalEmployees > 0
+                    ? ((additionalMetrics.rangeBreaches.aboveRange / totalEmployees) * 100).toFixed(1)
+                    : '0.0'}%)
+                </span>
+              </div>
+            </div>
+          </div>
+        </div>
+
         {/* Risk Assessment Card */}
         <div className={`${styles.metricCard} ${styles.riskCard}`}>
           <div className={styles.cardHeader}>
@@ -433,4 +493,4 @@ export const MetricsCards: React.FC<MetricsCardsProps> = ({
   );
 };
 
-export default MetricsCards; 
+export default MetricsCards;

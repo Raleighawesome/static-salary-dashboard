@@ -12,17 +12,27 @@ interface EmployeeTableProps {
   budgetCurrency: string;
   totalBudget: number;
   currentBudgetUsage: number;
+  initialFilterBy?: FilterType;
 }
 
 type SortField = 'name' | 'baseSalaryUSD' | 'performanceRating' | 'comparatio' | 'proposedRaise' | 'managerName';
 type SortDirection = 'asc' | 'desc';
+type FilterType =
+  | 'all'
+  | 'withRaises'
+  | 'highPerformers'
+  | 'atRisk'
+  | 'belowRange'
+  | 'aboveRange';
 
 // Options for ModernSelect components
 const FILTER_OPTIONS = [
   { value: 'all', label: 'All Employees', icon: '👥' },
   { value: 'withRaises', label: 'With Proposed Raises', icon: '💰' },
   { value: 'highPerformers', label: 'High Performers', icon: '⭐' },
-  { value: 'atRisk', label: 'At Risk', icon: '⚠️' }
+  { value: 'atRisk', label: 'At Risk', icon: '⚠️' },
+  { value: 'belowRange', label: 'Below Salary Range', icon: '⬇️' },
+  { value: 'aboveRange', label: 'Above Salary Range', icon: '⬆️' },
 ];
 
 const PAGE_SIZE_OPTIONS = [
@@ -39,14 +49,21 @@ export const EmployeeTable: React.FC<EmployeeTableProps> = ({
   budgetCurrency,
   totalBudget,
   currentBudgetUsage,
+  initialFilterBy,
 }) => {
   const [sortField, setSortField] = useState<SortField>('name');
   const [sortDirection, setSortDirection] = useState<SortDirection>('asc');
   const [searchTerm, setSearchTerm] = useState<string>('');
-  const [filterBy, setFilterBy] = useState<'all' | 'withRaises' | 'highPerformers' | 'atRisk'>('all');
+  const [filterBy, setFilterBy] = useState<FilterType>('all');
   const [managerFilter, setManagerFilter] = useState<string>('all');
   const [currentPage, setCurrentPage] = useState<number>(1);
   const [pageSize, setPageSize] = useState<number>(25);
+
+  useEffect(() => {
+    if (initialFilterBy) {
+      setFilterBy(initialFilterBy);
+    }
+  }, [initialFilterBy]);
   
   // Inline editing state
   const [editingEmployeeId, setEditingEmployeeId] = useState<string | null>(null);
@@ -482,6 +499,16 @@ export const EmployeeTable: React.FC<EmployeeTableProps> = ({
             return emp.performanceRating && emp.performanceRating >= 4.0;
           case 'atRisk':
             return (emp.comparatio && emp.comparatio < 80);
+          case 'belowRange': {
+            const base = typeof emp.baseSalary === 'number' ? emp.baseSalary : emp.baseSalaryUSD;
+            const min = emp.salaryGradeMin;
+            return typeof base === 'number' && typeof min === 'number' && base < min;
+          }
+          case 'aboveRange': {
+            const base = typeof emp.baseSalary === 'number' ? emp.baseSalary : emp.baseSalaryUSD;
+            const max = emp.salaryGradeMax;
+            return typeof base === 'number' && typeof max === 'number' && base > max;
+          }
           default:
             return true;
         }
@@ -549,7 +576,7 @@ export const EmployeeTable: React.FC<EmployeeTableProps> = ({
 
   // Handle filter change
   const handleFilterChange = useCallback((value: string) => {
-    setFilterBy(value as any);
+    setFilterBy(value as FilterType);
     setCurrentPage(1); // Reset to first page when filtering
   }, []);
 
