@@ -52,15 +52,30 @@ export class PolicyValidator {
 
     const employeeName = deriveEmployeeName(employee);
 
-    // Check comparatio floor
-    if (employee.comparatio && employee.comparatio < policies.comparatioFloor) {
+    // Check comparatio floor - use proposed comparatio if there's a proposed raise
+    let effectiveComparatio = employee.comparatio;
+    
+    // Calculate proposed comparatio if there's a proposed raise
+    if (employee.proposedRaise && employee.proposedRaise > 0 && employee.salaryGradeMid) {
+      const currentSalary = employee.baseSalaryUSD || employee.baseSalary || 0;
+      const proposedSalary = currentSalary + employee.proposedRaise;
+      effectiveComparatio = (proposedSalary / employee.salaryGradeMid) * 100;
+    }
+    
+    if (effectiveComparatio && effectiveComparatio < policies.comparatioFloor) {
+      // Show different message based on whether we're using current or proposed comparatio
+      const isUsingProposed = employee.proposedRaise && employee.proposedRaise > 0 && employee.salaryGradeMid;
+      const message = isUsingProposed 
+        ? `Proposed comparatio ${effectiveComparatio.toFixed(1)}% would still be below minimum of ${policies.comparatioFloor}%`
+        : `Comparatio ${effectiveComparatio.toFixed(1)}% is below minimum of ${policies.comparatioFloor}%`;
+      
       violations.push({
         type: 'COMPARATIO_TOO_LOW',
         severity: 'WARNING',
-        message: `Comparatio ${employee.comparatio.toFixed(1)}% is below minimum of ${policies.comparatioFloor}%`,
+        message,
         employeeId: employee.employeeId,
         employeeName,
-        currentValue: employee.comparatio,
+        currentValue: effectiveComparatio,
         threshold: policies.comparatioFloor,
       });
     }

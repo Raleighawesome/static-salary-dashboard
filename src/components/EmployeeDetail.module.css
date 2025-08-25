@@ -110,6 +110,7 @@
   grid-template-columns: 1fr 1fr;
   gap: 24px;
   padding: 24px;
+  min-height: 400px;
 }
 
 .leftColumn,
@@ -117,6 +118,14 @@
   display: flex;
   flex-direction: column;
   gap: 20px;
+}
+
+.leftColumn {
+  grid-column: 1;
+}
+
+.rightColumn {
+  grid-column: 2;
 }
 
 /* Cards */
@@ -863,9 +872,15 @@
 }
 
 /* Responsive Design */
-@media (max-width: 1200px) {
+@media (max-width: 900px) {
   .contentGrid {
     grid-template-columns: 1fr;
+  }
+  
+  /* Ensure both columns stack in single-column layout */
+  .leftColumn,
+  .rightColumn {
+    grid-column: 1;
   }
   
   .modalContent {

@@ -10,6 +10,7 @@ interface EmployeeMetric {
   timeInRole: number;
   retentionRisk: number;
   proposedRaisePercent: number;
+  timeSinceLastRaise: number; // Months since last raise
   currentSalary?: number; // Add current salary for tooltip
 }
 
@@ -18,7 +19,7 @@ interface MetricsHeatMapProps {
   onEmployeeSelect: (employee: EmployeeMetric) => void;
 }
 
-type MetricType = 'comparatio' | 'performanceRating' | 'timeInRole' | 'retentionRisk' | 'proposedRaisePercent';
+type MetricType = 'comparatio' | 'performanceRating' | 'timeInRole' | 'retentionRisk' | 'proposedRaisePercent' | 'timeSinceLastRaise';
 
 interface MetricConfig {
   label: string;
@@ -69,13 +70,31 @@ const METRIC_CONFIGS: Record<MetricType, MetricConfig> = {
     colorScale: 'red-green',
     thresholds: { excellent: 8, good: 5, fair: 3, poor: 1 },
   },
+  timeSinceLastRaise: {
+    label: 'Time Since Last Raise',
+    description: 'Months since last salary increase',
+    unit: 'mo',
+    colorScale: 'green-red',
+    thresholds: { excellent: 6, good: 12, fair: 18, poor: 24 },
+  },
 };
 
-// Options for ModernSelect components
-const METRIC_OPTIONS = Object.entries(METRIC_CONFIGS).map(([key, config]) => ({
+// Options for ModernSelect components - ordered as requested
+const METRIC_OPTIONS = [
+  'comparatio',
+  'timeSinceLastRaise', 
+  'performanceRating',
+  'timeInRole',
+  'proposedRaisePercent',
+  'retentionRisk'
+].map(key => ({
   value: key,
-  label: config.label,
-  icon: key === 'comparatio' ? '📊' : key === 'performanceRating' ? '⭐' : key === 'timeInRole' ? '⏰' : key === 'retentionRisk' ? '⚠️' : '💰'
+  label: METRIC_CONFIGS[key as MetricType].label,
+  icon: key === 'comparatio' ? '📊' : 
+        key === 'performanceRating' ? '⭐' : 
+        key === 'timeInRole' ? '⏰' : 
+        key === 'retentionRisk' ? '⚠️' : 
+        key === 'timeSinceLastRaise' ? '📅' : '💰'
 }));
 
 const SORT_OPTIONS = [
@@ -175,8 +194,8 @@ export const MetricsHeatMap: React.FC<MetricsHeatMapProps> = ({
       else if (value >= thresholds.poor) intensity = 0.25;
       else intensity = 0.1;
     } else if (colorScale === 'green-red') {
-      // Lower values are better (retention risk)
-      if (selectedMetric === 'retentionRisk') {
+      // Lower values are better (retention risk, time since last raise)
+      if (selectedMetric === 'retentionRisk' || selectedMetric === 'timeSinceLastRaise') {
         if (value <= thresholds.excellent) intensity = 1.0;
         else if (value <= thresholds.good) intensity = 0.75;
         else if (value <= thresholds.fair) intensity = 0.5;
@@ -229,14 +248,24 @@ export const MetricsHeatMap: React.FC<MetricsHeatMapProps> = ({
         filtered = filtered.filter(emp => {
           try {
             const metricValue = emp[selectedMetric];
-            if (typeof metricValue !== 'number' || metricValue <= 0 || isNaN(metricValue)) {
+            if (typeof metricValue !== 'number' || isNaN(metricValue)) {
+              return false; // Exclude employees with no valid data
+            }
+            
+            // For timeSinceLastRaise, -1 means no data
+            if (selectedMetric === 'timeSinceLastRaise' && metricValue < 0) {
+              return false; // Exclude employees with no data
+            }
+            
+            // For other metrics, <= 0 means no valid data
+            if (selectedMetric !== 'timeSinceLastRaise' && metricValue <= 0) {
               return false; // Exclude employees with no valid data
             }
             
             const { thresholds } = metricConfig;
             
             let category: 'excellent' | 'good' | 'fair' | 'poor';
-            if (selectedMetric === 'retentionRisk') {
+            if (selectedMetric === 'retentionRisk' || selectedMetric === 'timeSinceLastRaise') {
               if (metricValue <= thresholds.excellent) category = 'excellent';
               else if (metricValue <= thresholds.good) category = 'good';
               else if (metricValue <= thresholds.fair) category = 'fair';
@@ -268,8 +297,14 @@ export const MetricsHeatMap: React.FC<MetricsHeatMapProps> = ({
             const aVal = typeof a[selectedMetric] === 'number' ? a[selectedMetric] : 0;
             const bVal = typeof b[selectedMetric] === 'number' ? b[selectedMetric] : 0;
             
-            if (selectedMetric === 'retentionRisk') {
-              return aVal - bVal; // Ascending (lower risk first)
+            if (selectedMetric === 'timeSinceLastRaise') {
+              // For time since last raise, sort employees with no data (-1) to the bottom
+              if (aVal === -1 && bVal === -1) return 0; // Both have no data
+              if (aVal === -1) return 1; // a has no data, move to bottom
+              if (bVal === -1) return -1; // b has no data, move to bottom
+              return aVal - bVal; // Ascending (lower values are better for valid data)
+            } else if (selectedMetric === 'retentionRisk') {
+              return aVal - bVal; // Ascending (lower values are better)
             } else {
               return bVal - aVal; // Descending (higher values first)
             }
@@ -289,7 +324,17 @@ export const MetricsHeatMap: React.FC<MetricsHeatMapProps> = ({
 
   // Format metric value for display
   const formatMetricValue = useCallback((value: number): string => {
-    if (typeof value !== 'number' || value <= 0 || isNaN(value) || !isFinite(value)) {
+    if (typeof value !== 'number' || isNaN(value) || !isFinite(value)) {
+      return 'N/A';
+    }
+    
+    // Special handling for timeSinceLastRaise - -1 means no data available
+    if (selectedMetric === 'timeSinceLastRaise' && value < 0) {
+      return 'N/A';
+    }
+    
+    // For other metrics, values <= 0 are invalid
+    if (value <= 0) {
       return 'N/A';
     }
     
@@ -301,6 +346,19 @@ export const MetricsHeatMap: React.FC<MetricsHeatMapProps> = ({
         return value.toFixed(1);
       } else if (selectedMetric === 'timeInRole') {
         return `${Math.round(value)}mo`;
+      } else if (selectedMetric === 'timeSinceLastRaise') {
+        // Special formatting: months if <= 25, years + months if > 25
+        const months = Math.round(value);
+        if (months <= 25) {
+          return `${months}mo`;
+        } else {
+          const years = Math.floor(months / 12);
+          const remainingMonths = months % 12;
+          if (remainingMonths === 0) {
+            return `${years}yr`;
+          }
+          return `${years}yr ${remainingMonths}mo`;
+        }
       } else if (selectedMetric === 'retentionRisk' || selectedMetric === 'proposedRaisePercent') {
         return `${value.toFixed(1)}%`;
       }
@@ -413,9 +471,9 @@ export const MetricsHeatMap: React.FC<MetricsHeatMapProps> = ({
             // Calculate performance category inline
             const { thresholds } = metricConfig;
             let category: 'excellent' | 'good' | 'fair' | 'poor';
-            if (metricValue <= 0 || !isFinite(metricValue)) {
+            if (!isFinite(metricValue) || (selectedMetric === 'timeSinceLastRaise' && metricValue < 0) || (selectedMetric !== 'timeSinceLastRaise' && metricValue <= 0)) {
               category = 'poor';
-            } else if (selectedMetric === 'retentionRisk') {
+            } else if (selectedMetric === 'retentionRisk' || selectedMetric === 'timeSinceLastRaise') {
               if (metricValue <= thresholds.excellent) category = 'excellent';
               else if (metricValue <= thresholds.good) category = 'good';
               else if (metricValue <= thresholds.fair) category = 'fair';
@@ -481,6 +539,23 @@ export const MetricsHeatMap: React.FC<MetricsHeatMapProps> = ({
                       <div className={styles.tooltipMetric}>
                         <span>Proposed Raise:</span>
                         <span>{employee.proposedRaisePercent > 0 ? `${employee.proposedRaisePercent.toFixed(1)}%` : 'N/A'}</span>
+                      </div>
+                      <div className={styles.tooltipMetric}>
+                        <span>Time Since Last Raise:</span>
+                        <span>{typeof employee.timeSinceLastRaise === 'number' && employee.timeSinceLastRaise >= 0 ? (() => {
+                          // Use the special formatting logic for display
+                          const months = Math.round(employee.timeSinceLastRaise);
+                          if (months <= 25) {
+                            return `${months}mo`;
+                          } else {
+                            const years = Math.floor(months / 12);
+                            const remainingMonths = months % 12;
+                            if (remainingMonths === 0) {
+                              return `${years}yr`;
+                            }
+                            return `${years}yr ${remainingMonths}mo`;
+                          }
+                        })() : 'N/A'}</span>
                       </div>
                     </div>
                     <div className={styles.tooltipFooter}>

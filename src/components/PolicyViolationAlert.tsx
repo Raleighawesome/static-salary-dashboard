@@ -11,6 +11,9 @@ interface PolicyViolationAlertProps {
   onCancel: () => void;
   isVisible: boolean;
   actionType: 'export' | 'save' | 'approve' | 'validate';
+  onEmployeeSelect?: (employee: any) => void; // Function to handle employee selection
+  employeeData?: any[]; // Full employee data for finding employees
+  budgetUtilization?: number; // Pre-calculated budget utilization percentage
 }
 
 interface ViolationSummary {
@@ -29,7 +32,10 @@ export const PolicyViolationAlert: React.FC<PolicyViolationAlertProps> = ({
   onConfirm,
   onCancel,
   isVisible,
-  actionType
+  actionType,
+  onEmployeeSelect,
+  employeeData,
+  budgetUtilization
 }) => {
   const [showDetails, setShowDetails] = useState(false);
   const [acknowledgedRisks, setAcknowledgedRisks] = useState(false);
@@ -63,6 +69,41 @@ export const PolicyViolationAlert: React.FC<PolicyViolationAlertProps> = ({
   const toggleDetails = useCallback(() => {
     setShowDetails(!showDetails);
   }, [showDetails]);
+
+  // Handle employee selection from violation
+  const handleEmployeeClick = useCallback((violation: PolicyViolation) => {
+    if (!onEmployeeSelect || !employeeData) return;
+
+    // Find employee by ID or name
+    const employee = employeeData.find(emp => {
+      // First try to match by employee ID
+      if (violation.employeeId && emp.employeeId === violation.employeeId) {
+        return true;
+      }
+      // Then try to match by name (case-insensitive)
+      if (violation.employeeName && 
+          emp.name && 
+          emp.name.toLowerCase() === violation.employeeName.toLowerCase()) {
+        return true;
+      }
+      // Also check other name fields
+      const fullName = emp['Employee Full name'] || emp['Employee Name'] || emp.name;
+      if (violation.employeeName && 
+          fullName && 
+          fullName.toLowerCase() === violation.employeeName.toLowerCase()) {
+        return true;
+      }
+      return false;
+    });
+
+    if (employee) {
+      onEmployeeSelect(employee);
+      // Close the policy alert after selecting employee so user can see employee detail view
+      onCancel();
+    } else {
+      console.warn('Could not find employee:', violation.employeeName || violation.employeeId);
+    }
+  }, [onEmployeeSelect, employeeData, onCancel]);
 
   // Get action-specific messaging
   const getActionMessage = () => {
@@ -145,7 +186,8 @@ export const PolicyViolationAlert: React.FC<PolicyViolationAlertProps> = ({
               <div className={styles.summaryIcon}>📊</div>
               <div className={styles.summaryContent}>
                 <div className={styles.summaryNumber}>
-                  {totalBudget > 0 ? ((currentBudgetUsage / totalBudget) * 100).toFixed(1) : 0}%
+                  {budgetUtilization !== undefined ? budgetUtilization.toFixed(1) : 
+                   (totalBudget > 0 ? ((currentBudgetUsage / totalBudget) * 100).toFixed(1) : 0)}%
                 </div>
                 <div className={styles.summaryLabel}>Budget Used</div>
               </div>
@@ -177,8 +219,23 @@ export const PolicyViolationAlert: React.FC<PolicyViolationAlertProps> = ({
                       <div className={styles.violationHeader}>
                          <span className={styles.violationType}>{violation.type.replace(/_/g, ' ')}</span>
                         {(violation.employeeName || violation.employeeId) && (
-                          <span className={styles.employeeId}>
-                            Employee: {violation.employeeName || violation.employeeId}
+                          <span className={styles.employeeInfo}>
+                            Employee: {onEmployeeSelect && employeeData ? (
+                              <button 
+                                className={styles.employeeLink}
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  handleEmployeeClick(violation);
+                                }}
+                                title="Click to view employee details"
+                              >
+                                {violation.employeeName || violation.employeeId}
+                              </button>
+                            ) : (
+                              <span className={styles.employeeId}>
+                                {violation.employeeName || violation.employeeId}
+                              </span>
+                            )}
                           </span>
                         )}
                       </div>
@@ -204,8 +261,23 @@ export const PolicyViolationAlert: React.FC<PolicyViolationAlertProps> = ({
                       <div className={styles.violationHeader}>
                          <span className={styles.violationType}>{violation.type.replace(/_/g, ' ')}</span>
                         {(violation.employeeName || violation.employeeId) && (
-                          <span className={styles.employeeId}>
-                            Employee: {violation.employeeName || violation.employeeId}
+                          <span className={styles.employeeInfo}>
+                            Employee: {onEmployeeSelect && employeeData ? (
+                              <button 
+                                className={styles.employeeLink}
+                                onClick={(e) => {
+                                  e.preventDefault();
+                                  handleEmployeeClick(violation);
+                                }}
+                                title="Click to view employee details"
+                              >
+                                {violation.employeeName || violation.employeeId}
+                              </button>
+                            ) : (
+                              <span className={styles.employeeId}>
+                                {violation.employeeName || violation.employeeId}
+                              </span>
+                            )}
                           </span>
                         )}
                       </div>

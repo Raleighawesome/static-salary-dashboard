@@ -127,18 +127,22 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
           // Process time in role (ensure it's a valid number); derive if missing
           let timeInRole = 0;
+          
+          // Always calculate tenure info for lastRaiseMonthsAgo and other metrics
+          const hireDate = emp['Latest Hire Date'] || emp.hireDate || emp['hire_date'] || emp['start_date'] || emp['Hire Date'] || emp['Start Date'];
+          const roleStartDate = emp['Job Entry Start Date'] || emp.roleStartDate || emp['role_start_date'] || emp['current_role_start'] || emp['Role Start Date'] || emp['Current Role Start'];
+          const lastRaiseDate = emp['lastRaiseDate'] || emp['last_raise_date'] || emp['last_increase_date'] || emp['Last Raise Date'] || emp['Last Salary Change Date'];
+          const tenureInfo = EmployeeCalculations.calculateTenure(hireDate, roleStartDate, lastRaiseDate);
+          
           if (emp.timeInRole !== undefined && emp.timeInRole !== null && emp.timeInRole !== '') {
             const timeValue = typeof emp.timeInRole === 'string' ? parseFloat(emp.timeInRole) : emp.timeInRole;
             if (!isNaN(timeValue) && isFinite(timeValue) && timeValue >= 0) {
               timeInRole = timeValue;
             }
           }
+          
           if (timeInRole === 0) {
-            // Derive using robust date parsing used elsewhere
-            const hireDate = emp['Latest Hire Date'] || emp.hireDate || emp['hire_date'] || emp['start_date'] || emp['Hire Date'] || emp['Start Date'];
-            const roleStartDate = emp['Job Entry Start Date'] || emp.roleStartDate || emp['role_start_date'] || emp['current_role_start'] || emp['Role Start Date'] || emp['Current Role Start'];
-            const lastRaiseDate = emp['lastRaiseDate'] || emp['last_raise_date'] || emp['last_increase_date'] || emp['Last Raise Date'] || emp['Last Salary Change Date'];
-            const tenureInfo = EmployeeCalculations.calculateTenure(hireDate, roleStartDate, lastRaiseDate);
+            // Use derived time in role if not available
             timeInRole = tenureInfo.timeInRoleMonths;
           }
 
@@ -150,6 +154,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
             timeInRole: timeInRole,
             retentionRisk: typeof emp.retentionRisk === 'number' && emp.retentionRisk >= 0 ? emp.retentionRisk : 0,
             proposedRaisePercent: isFinite(proposedRaisePercent) ? proposedRaisePercent : 0,
+            timeSinceLastRaise: tenureInfo.lastRaiseMonthsAgo || 0,
             currentSalary: typeof emp.baseSalaryUSD === 'number' && emp.baseSalaryUSD > 0 ? emp.baseSalaryUSD : (emp.baseSalary || 0),
           };
         } catch (error) {
@@ -229,12 +234,11 @@ export const Dashboard: React.FC<DashboardProps> = ({
     setSelectedEmployee(null);
   }, []);
 
-  // Handle policy validation
-  const handleValidatePolicies = useCallback(() => {
-
+  // Recalculate policy violations - reusable function
+  const recalculatePolicyViolations = useCallback(() => {
+    const allViolations: PolicyViolation[] = [];
     
     // Validate all employees
-    const allViolations: PolicyViolation[] = [];
     employeeData.forEach(employee => {
       const violations = PolicyValidator.validateEmployee(employee);
       allViolations.push(...violations);
@@ -252,6 +256,32 @@ export const Dashboard: React.FC<DashboardProps> = ({
     allViolations.push(...budgetViolations);
 
     setPolicyViolations(allViolations);
+    return allViolations;
+  }, [employeeData, totalBudget, budgetMetrics.totalProposedRaises]);
+
+  // Enhanced employee update handler that recalculates policy violations
+  const handleEmployeeUpdate = useCallback((employeeId: string, updates: any) => {
+    // Call the original update function
+    onEmployeeUpdate(employeeId, updates);
+    
+    // Recalculate policy violations after a short delay to allow state to update
+    setTimeout(() => {
+      recalculatePolicyViolations();
+    }, 100);
+  }, [onEmployeeUpdate, recalculatePolicyViolations]);
+
+  // Auto-recalculate policy violations when employee data changes and policy alert is visible
+  useEffect(() => {
+    if (showPolicyAlert) {
+      recalculatePolicyViolations();
+    }
+  }, [employeeData, showPolicyAlert, recalculatePolicyViolations]);
+
+  // Handle policy validation
+  const handleValidatePolicies = useCallback(() => {
+
+    
+    const allViolations = recalculatePolicyViolations();
     setPendingAction('validate');
     
     if (allViolations.length > 0) {
@@ -259,31 +289,14 @@ export const Dashboard: React.FC<DashboardProps> = ({
     } else {
       alert('✅ All policies are compliant! No violations found.');
     }
-  }, [employeeData, totalBudget, budgetMetrics.totalProposedRaises]);
+  }, [recalculatePolicyViolations]);
 
   // Handle CSV export
   const handleExportCSV = useCallback(async () => {
 
     
     // First validate policies
-    const allViolations: PolicyViolation[] = [];
-    employeeData.forEach(employee => {
-      const violations = PolicyValidator.validateEmployee(employee);
-      allViolations.push(...violations);
-    });
-
-    // Add budget validation
-    const budgetViolations = PolicyValidator.validateBudget(
-      { 
-        totalBudget, 
-        currentBudgetUsage: budgetMetrics.totalProposedRaises, 
-        employeeCount: employeeData.length 
-      },
-      0
-    );
-    allViolations.push(...budgetViolations);
-
-    setPolicyViolations(allViolations);
+    const allViolations = recalculatePolicyViolations();
     setPendingAction('export');
 
     // Show policy alert if there are violations
@@ -463,7 +476,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
             <EmployeeTable
               employeeData={employeeData}
               onEmployeeSelect={handleEmployeeSelect}
-              onEmployeeUpdate={onEmployeeUpdate}
+              onEmployeeUpdate={handleEmployeeUpdate}
               budgetCurrency={budgetCurrency}
               totalBudget={totalBudget}
               currentBudgetUsage={budgetMetrics.totalProposedRaises}
@@ -477,7 +490,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
             employee={selectedEmployee}
             allEmployees={employeeData}
             onClose={handleCloseDetails}
-            onEmployeeUpdate={onEmployeeUpdate}
+            onEmployeeUpdate={handleEmployeeUpdate}
             budgetCurrency={budgetCurrency}
             totalBudget={totalBudget}
             currentBudgetUsage={budgetMetrics.totalProposedRaises}
@@ -495,6 +508,9 @@ export const Dashboard: React.FC<DashboardProps> = ({
         onCancel={handlePolicyCancel}
         isVisible={showPolicyAlert}
         actionType={pendingAction || 'export'}
+        onEmployeeSelect={handleEmployeeSelect}
+        employeeData={employeeData}
+        budgetUtilization={budgetMetrics.budgetUtilization}
       />
 
       {/* Dashboard Footer with Summary */}

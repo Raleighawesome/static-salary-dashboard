@@ -270,6 +270,35 @@
   border-radius: 4px;
 }
 
+.employeeInfo {
+  font-size: 14px;
+  color: #6b7280;
+}
+
+.employeeLink {
+  background: none;
+  border: none;
+  font-size: 14px;
+  color: #3b82f6;
+  text-decoration: underline;
+  cursor: pointer;
+  padding: 2px 8px;
+  border-radius: 4px;
+  transition: all 0.2s ease;
+  font-family: inherit;
+}
+
+.employeeLink:hover {
+  background: #eff6ff;
+  color: #2563eb;
+  text-decoration: none;
+}
+
+.employeeLink:focus {
+  outline: 2px solid #3b82f6;
+  outline-offset: 2px;
+}
+
 .violationMessage {
   color: #374151;
   line-height: 1.5;

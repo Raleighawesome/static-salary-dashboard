@@ -522,7 +522,7 @@ export const EmployeeDetail: React.FC<EmployeeDetailProps> = ({
               </div>
             </div>
 
-            {/* 3. Tenure & Experience Card */}
+            {/* 2. Tenure & Experience Card */}
             <div className={styles.card}>
               <h3 className={styles.cardTitle}>🕒 Tenure & Experience</h3>
               <div className={styles.tenureInfo}>
@@ -618,109 +618,7 @@ export const EmployeeDetail: React.FC<EmployeeDetailProps> = ({
               </div>
             </div>
 
-            {/* 5. Retention Risk Analysis Card */}
-            <div className={styles.card}>
-              <h3 className={styles.cardTitle}>⚠️ Retention Risk Analysis (Experimental)</h3>
-              <div className={styles.retentionRisk}>
-                <div className={styles.riskScore}>
-                  <span className={styles.label}>Risk Level:</span>
-                  <span className={`${styles.riskLevel} ${styles[analysis.retentionRisk.riskLevel.toLowerCase()]}`}>
-                    {analysis.retentionRisk.riskLevel}
-                  </span>
-                  <span className={styles.riskPoints}>
-                    ({analysis.retentionRisk.totalRisk}/100)
-                  </span>
-                </div>
-                
-                <div className={styles.riskBreakdown}>
-                  <div className={styles.riskComponent}>
-                    <span className={styles.label}>Salary Risk:</span>
-                    <span className={styles.value}>{analysis.retentionRisk.comparatioRisk}/40</span>
-                  </div>
-                  <div className={styles.riskComponent}>
-                    <span className={styles.label}>Performance Risk:</span>
-                    <span className={styles.value}>{analysis.retentionRisk.performanceRisk}/30</span>
-                  </div>
-                  <div className={styles.riskComponent}>
-                    <span className={styles.label}>Tenure Risk:</span>
-                    <span className={styles.value}>{analysis.retentionRisk.tenureRisk}/20</span>
-                  </div>
-                  <div className={styles.riskComponent}>
-                    <span className={styles.label}>Market Risk:</span>
-                    <span className={styles.value}>{analysis.retentionRisk.marketRisk}/10</span>
-                  </div>
-                </div>
-
-                <div className={styles.riskFactors}>
-                  <h4>Risk Factors:</h4>
-                  <ul>
-                    {analysis.retentionRisk.riskFactors.map((factor, index) => (
-                      <li key={index}>{factor}</li>
-                    ))}
-                  </ul>
-                </div>
-              </div>
-            </div>
-
-            {/* 7. AI Recommendation Card */}
-            <div className={styles.card}>
-              <h3 className={styles.cardTitle}>🤖 AI Recommendation (Experimental)</h3>
-              <div className={styles.recommendation}>
-                <div className={styles.recommendedRaise}>
-                  <span className={styles.label}>Recommended Raise:</span>
-                  <span className={styles.value}>
-                    {(() => {
-                      const recommendedAmountUSD = analysis.raiseRecommendation.recommendedAmount;
-                      const employeeCurrency = employee.currency || 'USD';
-                      const percent = analysis.raiseRecommendation.recommendedPercent;
-                      
-                      if (recommendedAmountUSD <= 0) {
-                        return 'Not Available';
-                      }
-                      
-                      // Always show USD first
-                      const usdDisplay = `${formatCurrencyDisplay(recommendedAmountUSD, 'USD')} (${EmployeeCalculations.formatPercentage(percent)})`;
-                      
-                      // If employee currency is not USD, show local currency in parentheses
-                      if (employeeCurrency !== 'USD' && employee.baseSalary && employee.baseSalaryUSD && employee.baseSalaryUSD > 0) {
-                        const conversionRate = employee.baseSalary / employee.baseSalaryUSD;
-                        const recommendedAmountLocal = Math.round(recommendedAmountUSD * conversionRate);
-                        
-                        return (
-                          <>
-                            {usdDisplay}
-                            <div className={styles.originalCurrency}>
-                              ({formatCurrencyDisplay(recommendedAmountLocal, employeeCurrency)})
-                            </div>
-                          </>
-                        );
-                      }
-                      
-                      return usdDisplay;
-                    })()}
-                  </span>
-                </div>
-                <div className={styles.priority}>
-                  <span className={styles.label}>Priority:</span>
-                  <span className={`${styles.priorityLevel} ${styles[analysis.raiseRecommendation.priority.toLowerCase()]}`}>
-                    {analysis.raiseRecommendation.priority}
-                  </span>
-                </div>
-                <div className={styles.reasoning}>
-                  <h4>Reasoning:</h4>
-                  <ul>
-                    {analysis.raiseRecommendation.reasoning.map((reason, index) => (
-                      <li key={index}>{reason}</li>
-                    ))}
-                  </ul>
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Right Column */}
-          <div className={styles.rightColumn}>
-            {/* 2. Proposed Adjustment Card */}
+            {/* 3. Proposed Adjustment Card */}
             <div className={styles.card}>
               <h3 className={styles.cardTitle}>🎯 Proposed Adjustment</h3>
               <div className={styles.proposedRaise}>
@@ -853,59 +751,66 @@ export const EmployeeDetail: React.FC<EmployeeDetailProps> = ({
                 )}
               </div>
             </div>
-            {/* 2. Salary Grade Range Card */}
+
+            {/* 4. AI Recommendation Card */}
             <div className={styles.card}>
-              <h3 className={styles.cardTitle}>📊 Salary Grade Range</h3>
-              <div className={styles.salaryRange}>
-                <div className={styles.rangeBar}>
-                  <div className={styles.rangeLabels}>
-                    <span>Min</span>
-                    <span>Midpoint</span>
-                    <span>Max</span>
-                  </div>
-                  <div className={styles.rangeVisual}>
-                    <div className={styles.rangeTrack}>
-                      <div 
-                        className={styles.currentPosition}
-                        style={{
-                          left: `${Math.max(0, Math.min(100, 
-                            ((analysis.salaryAnalysis.currentSalary - analysis.salaryAnalysis.salaryGradeMin) / 
-                            (analysis.salaryAnalysis.salaryGradeMax - analysis.salaryAnalysis.salaryGradeMin)) * 100
-                          ))}%`
-                        }}
-                      />
-                    </div>
-                  </div>
-                  <div className={styles.rangeValues}>
-                    <span>{formatCurrencyDisplay(analysis.salaryAnalysis.salaryGradeMin)}</span>
-                    <span>{formatCurrencyDisplay(analysis.salaryAnalysis.salaryGradeMid)}</span>
-                    <span>{formatCurrencyDisplay(analysis.salaryAnalysis.salaryGradeMax)}</span>
-                  </div>
+              <h3 className={styles.cardTitle}>🤖 AI Recommendation (Experimental)</h3>
+              <div className={styles.recommendation}>
+                <div className={styles.recommendedRaise}>
+                  <span className={styles.label}>Recommended Raise:</span>
+                  <span className={styles.value}>
+                    {(() => {
+                      const recommendedAmountUSD = analysis.raiseRecommendation.recommendedAmount;
+                      const employeeCurrency = employee.currency || 'USD';
+                      const percent = analysis.raiseRecommendation.recommendedPercent;
+                      
+                      if (recommendedAmountUSD <= 0) {
+                        return 'Not Available';
+                      }
+                      
+                      // Always show USD first
+                      const usdDisplay = `${formatCurrencyDisplay(recommendedAmountUSD, 'USD')} (${EmployeeCalculations.formatPercentage(percent)})`;
+                      
+                      // If employee currency is not USD, show local currency in parentheses
+                      if (employeeCurrency !== 'USD' && employee.baseSalary && employee.baseSalaryUSD && employee.baseSalaryUSD > 0) {
+                        const conversionRate = employee.baseSalary / employee.baseSalaryUSD;
+                        const recommendedAmountLocal = Math.round(recommendedAmountUSD * conversionRate);
+                        
+                        return (
+                          <>
+                            {usdDisplay}
+                            <div className={styles.originalCurrency}>
+                              ({formatCurrencyDisplay(recommendedAmountLocal, employeeCurrency)})
+                            </div>
+                          </>
+                        );
+                      }
+                      
+                      return usdDisplay;
+                    })()}
+                  </span>
                 </div>
-                <div className={styles.rangeDetails}>
-                  <div className={styles.rangeDetail}>
-                    <span className={styles.label}>Position in Range:</span>
-                    <span className={`${styles.value} ${styles[analysis.salaryAnalysis.positionInRange.toLowerCase().replace(' ', '')]}`}>
-                      {analysis.salaryAnalysis.positionInRange}
-                    </span>
-                  </div>
-                  <div className={styles.rangeDetail}>
-                    <span className={styles.label}>Segment:</span>
-                    <span className={styles.value}>
-                      {employee.salaryRangeSegment || 'Not Available'}
-                    </span>
-                  </div>
-                  <div className={styles.rangeDetail}>
-                    <span className={styles.label}>Amount to next segment:</span>
-                    <span className={styles.value}>
-                      {formatCurrencyDisplay(analysis.salaryAnalysis.roomForGrowth)}
-                    </span>
-                  </div>
+                <div className={styles.priority}>
+                  <span className={styles.label}>Priority:</span>
+                  <span className={`${styles.priorityLevel} ${styles[analysis.raiseRecommendation.priority.toLowerCase()]}`}>
+                    {analysis.raiseRecommendation.priority}
+                  </span>
+                </div>
+                <div className={styles.reasoning}>
+                  <h4>Reasoning:</h4>
+                  <ul>
+                    {analysis.raiseRecommendation.reasoning.map((reason, index) => (
+                      <li key={index}>{reason}</li>
+                    ))}
+                  </ul>
                 </div>
               </div>
             </div>
+          </div>
 
-            {/* 3. Performance & Impact Card */}
+          {/* Right Column */}
+          <div className={styles.rightColumn}>
+            {/* Performance & Impact Card */}
             <div className={styles.card}>
               <h3 className={styles.cardTitle}>⭐ Performance & Impact</h3>
               <div className={styles.performanceInfo}>
@@ -970,7 +875,101 @@ export const EmployeeDetail: React.FC<EmployeeDetailProps> = ({
               )}
             </div>
 
-            {/* 6. Proposed Adjustment Card (moved above; removed duplicate) */}
+            {/* Salary Grade Range Card */}
+            <div className={styles.card}>
+              <h3 className={styles.cardTitle}>📊 Salary Grade Range</h3>
+              <div className={styles.salaryRange}>
+                <div className={styles.rangeBar}>
+                  <div className={styles.rangeLabels}>
+                    <span>Min</span>
+                    <span>Midpoint</span>
+                    <span>Max</span>
+                  </div>
+                  <div className={styles.rangeVisual}>
+                    <div className={styles.rangeTrack}>
+                      <div 
+                        className={styles.currentPosition}
+                        style={{
+                          left: `${Math.max(0, Math.min(100, 
+                            ((analysis.salaryAnalysis.currentSalary - analysis.salaryAnalysis.salaryGradeMin) / 
+                            (analysis.salaryAnalysis.salaryGradeMax - analysis.salaryAnalysis.salaryGradeMin)) * 100
+                          ))}%`
+                        }}
+                      />
+                    </div>
+                  </div>
+                  <div className={styles.rangeValues}>
+                    <span>{formatCurrencyDisplay(analysis.salaryAnalysis.salaryGradeMin)}</span>
+                    <span>{formatCurrencyDisplay(analysis.salaryAnalysis.salaryGradeMid)}</span>
+                    <span>{formatCurrencyDisplay(analysis.salaryAnalysis.salaryGradeMax)}</span>
+                  </div>
+                </div>
+                <div className={styles.rangeDetails}>
+                  <div className={styles.rangeDetail}>
+                    <span className={styles.label}>Position in Range:</span>
+                    <span className={`${styles.value} ${styles[analysis.salaryAnalysis.positionInRange.toLowerCase().replace(' ', '')]}`}>
+                      {analysis.salaryAnalysis.positionInRange}
+                    </span>
+                  </div>
+                  <div className={styles.rangeDetail}>
+                    <span className={styles.label}>Segment:</span>
+                    <span className={styles.value}>
+                      {employee.salaryRangeSegment || 'Not Available'}
+                    </span>
+                  </div>
+                  <div className={styles.rangeDetail}>
+                    <span className={styles.label}>Amount to next segment:</span>
+                    <span className={styles.value}>
+                      {formatCurrencyDisplay(analysis.salaryAnalysis.roomForGrowth)}
+                    </span>
+                  </div>
+                </div>
+              </div>
+            </div>
+
+            {/* Retention Risk Analysis Card */}
+            <div className={styles.card}>
+              <h3 className={styles.cardTitle}>⚠️ Retention Risk Analysis (Experimental)</h3>
+              <div className={styles.retentionRisk}>
+                <div className={styles.riskScore}>
+                  <span className={styles.label}>Risk Level:</span>
+                  <span className={`${styles.riskLevel} ${styles[analysis.retentionRisk.riskLevel.toLowerCase()]}`}>
+                    {analysis.retentionRisk.riskLevel}
+                  </span>
+                  <span className={styles.riskPoints}>
+                    ({analysis.retentionRisk.totalRisk}/100)
+                  </span>
+                </div>
+                
+                <div className={styles.riskBreakdown}>
+                  <div className={styles.riskComponent}>
+                    <span className={styles.label}>Salary Risk:</span>
+                    <span className={styles.value}>{analysis.retentionRisk.comparatioRisk}/40</span>
+                  </div>
+                  <div className={styles.riskComponent}>
+                    <span className={styles.label}>Performance Risk:</span>
+                    <span className={styles.value}>{analysis.retentionRisk.performanceRisk}/30</span>
+                  </div>
+                  <div className={styles.riskComponent}>
+                    <span className={styles.label}>Tenure Risk:</span>
+                    <span className={styles.value}>{analysis.retentionRisk.tenureRisk}/20</span>
+                  </div>
+                  <div className={styles.riskComponent}>
+                    <span className={styles.label}>Market Risk:</span>
+                    <span className={styles.value}>{analysis.retentionRisk.marketRisk}/10</span>
+                  </div>
+                </div>
+
+                <div className={styles.riskFactors}>
+                  <h4>Risk Factors:</h4>
+                  <ul>
+                    {analysis.retentionRisk.riskFactors.map((factor, index) => (
+                      <li key={index}>{factor}</li>
+                    ))}
+                  </ul>
+                </div>
+              </div>
+            </div>
           </div>
         </div>
 
