@@ -1,4 +1,4 @@
-import React, { useMemo } from 'react';
+import React, { useMemo, useState } from 'react';
 import styles from './MetricsCards.module.css';
 import { EmployeeCalculations } from '../utils/calculations';
 
@@ -20,10 +20,284 @@ interface MetricsCardsProps {
   onQuickFilter?: (filter: 'belowRange' | 'aboveRange') => void;
 }
 
+interface EmployeeListComponentProps {
+  employees: any[];
+  styles: any;
+  onEmployeeSelect?: (employee: any) => void;
+  maxVisible?: number;
+}
+
+const EmployeeListComponent: React.FC<EmployeeListComponentProps> = ({ 
+  employees, 
+  styles, 
+  onEmployeeSelect, 
+  maxVisible = 4 
+}) => {
+  const [currentPage, setCurrentPage] = useState(0);
+  const totalPages = Math.ceil(employees.length / maxVisible);
+  const startIndex = currentPage * maxVisible;
+  const visibleEmployees = employees.slice(startIndex, startIndex + maxVisible);
+
+  const handlePrevPage = () => setCurrentPage(prev => Math.max(0, prev - 1));
+  const handleNextPage = () => setCurrentPage(prev => Math.min(totalPages - 1, prev + 1));
+
+  const getName = (employee: any) => {
+    return employee.name ||
+      employee.employeeName ||
+      employee.fullName ||
+      employee['Employee Name'] ||
+      'Unknown';
+  };
+
+  const getId = (employee: any) => {
+    return employee.employeeId ||
+      employee.id ||
+      employee.email ||
+      getName(employee);
+  };
+
+  if (employees.length === 0) {
+    return (
+      <div className={styles.employeeList}>
+        <div className={styles.employeeItem}>
+          <span className={styles.employeeLink}>No employees found</span>
+        </div>
+      </div>
+    );
+  }
+
+  return (
+    <div>
+      <ul className={styles.employeeList}>
+        {visibleEmployees.map((employee) => (
+          <li key={getId(employee)} className={styles.employeeItem}>
+            <button
+              type="button"
+              className={styles.employeeLink}
+              onClick={() => onEmployeeSelect && onEmployeeSelect(employee)}
+            >
+              {getName(employee)}
+            </button>
+          </li>
+        ))}
+      </ul>
+      {totalPages > 1 && (
+        <div className={styles.paginationControls}>
+          <button 
+            onClick={handlePrevPage} 
+            disabled={currentPage === 0}
+            className={styles.pageButton}
+          >
+            ←
+          </button>
+          <span className={styles.pageInfo}>
+            {currentPage + 1} of {totalPages}
+          </span>
+          <button 
+            onClick={handleNextPage} 
+            disabled={currentPage === totalPages - 1}
+            className={styles.pageButton}
+          >
+            →
+          </button>
+        </div>
+      )}
+    </div>
+  );
+};
+
+interface RangeBreachesCardProps {
+  additionalMetrics: any;
+  totalEmployees: number;
+  employeeData: any[];
+  onEmployeeSelect?: (employee: any) => void;
+  onQuickFilter?: (filter: 'belowRange' | 'aboveRange') => void;
+  styles: any;
+}
+
+const RangeBreachesCard: React.FC<RangeBreachesCardProps> = ({
+  additionalMetrics,
+  totalEmployees,
+  employeeData,
+  onEmployeeSelect,
+  onQuickFilter,
+  styles
+}) => {
+  const belowRangeEmployees = employeeData.filter(emp => {
+    const base = typeof emp.baseSalary === 'number' ? emp.baseSalary : emp.baseSalaryUSD;
+    const min = emp.salaryGradeMin;
+    return typeof base === 'number' && typeof min === 'number' && base < min;
+  });
+
+  const aboveRangeEmployees = employeeData.filter(emp => {
+    const base = typeof emp.baseSalary === 'number' ? emp.baseSalary : emp.baseSalaryUSD;
+    const max = emp.salaryGradeMax;
+    return typeof base === 'number' && typeof max === 'number' && base > max;
+  });
+
+  const allBreachEmployees = [...belowRangeEmployees, ...aboveRangeEmployees];
+
+  return (
+    <div className={`${styles.metricCard} ${styles.rangeCard}`}>
+      <div className={styles.cardHeader}>
+        <div className={styles.cardIcon}>📏</div>
+        <div className={styles.cardTitle}>Range Breaches</div>
+      </div>
+      <div className={styles.cardContent}>
+        <div className={styles.primaryMetric}>
+          <div className={styles.metricValue}>
+            {additionalMetrics.rangeBreaches.belowRange + additionalMetrics.rangeBreaches.aboveRange}
+          </div>
+          <div className={styles.metricLabel}>Total Breaches</div>
+        </div>
+        <div className={styles.secondaryMetrics}>
+          <div
+            className={`${styles.secondaryMetric} ${styles.clickable}`}
+            onClick={() => onQuickFilter?.('belowRange')}
+          >
+            <span className={styles.secondaryLabel}>Below Min:</span>
+            <span className={styles.secondaryValue}>
+              {additionalMetrics.rangeBreaches.belowRange}{' '}
+              ({totalEmployees > 0
+                ? ((additionalMetrics.rangeBreaches.belowRange / totalEmployees) * 100).toFixed(1)
+                : '0.0'}%)
+            </span>
+          </div>
+          <div
+            className={`${styles.secondaryMetric} ${styles.clickable}`}
+            onClick={() => onQuickFilter?.('aboveRange')}
+          >
+            <span className={styles.secondaryLabel}>Above Max:</span>
+            <span className={styles.secondaryValue}>
+              {additionalMetrics.rangeBreaches.aboveRange}{' '}
+              ({totalEmployees > 0
+                ? ((additionalMetrics.rangeBreaches.aboveRange / totalEmployees) * 100).toFixed(1)
+                : '0.0'}%)
+            </span>
+          </div>
+        </div>
+        {allBreachEmployees.length > 0 && (
+          <EmployeeListComponent
+            employees={allBreachEmployees}
+            styles={styles}
+            onEmployeeSelect={onEmployeeSelect}
+            maxVisible={4}
+          />
+        )}
+      </div>
+    </div>
+  );
+};
+
+interface RiskAssessmentCardProps {
+  additionalMetrics: any;
+  budgetMetrics: any;
+  totalEmployees: number;
+  employeeData: any[];
+  onEmployeeSelect?: (employee: any) => void;
+  styles: any;
+}
+
+const RiskAssessmentCard: React.FC<RiskAssessmentCardProps> = ({
+  additionalMetrics,
+  budgetMetrics,
+  totalEmployees,
+  employeeData,
+  onEmployeeSelect,
+  styles
+}) => {
+  const atRiskEmployees = employeeData.filter(emp =>
+    (emp.comparatio && emp.comparatio < 0.8) ||
+    (emp.retentionRisk && emp.retentionRisk > 70)
+  );
+
+
+  return (
+    <div className={`${styles.metricCard} ${styles.riskCard}`}>
+      <div className={styles.cardHeader}>
+        <div className={styles.cardIcon}>⚠️</div>
+        <div className={styles.cardTitle}>Risk Assessment</div>
+      </div>
+      <div className={styles.cardContent}>
+        <div className={styles.primaryMetric}>
+          <div className={styles.metricValue}>
+            {additionalMetrics.atRiskEmployees}
+          </div>
+          <div className={styles.metricLabel}>At-Risk Employees</div>
+        </div>
+        <div className={styles.secondaryMetrics}>
+          <div className={styles.secondaryMetric}>
+            <span className={styles.secondaryLabel}>Budget Risk:</span>
+            <span className={`${styles.secondaryValue} ${budgetMetrics.budgetUtilization > 100 ? styles.critical : budgetMetrics.budgetUtilization > 90 ? styles.warning : styles.good}`}>
+              {budgetMetrics.budgetUtilization > 100 ? 'Over Budget' : 
+               budgetMetrics.budgetUtilization > 90 ? 'High Risk' : 'Low Risk'}
+            </span>
+          </div>
+          <div className={styles.secondaryMetric}>
+            <span className={styles.secondaryLabel}>Data Quality:</span>
+            <span className={styles.secondaryValue}>
+              {((employeeData.filter(emp => emp.name && (emp.employeeId || emp.email)).length / totalEmployees) * 100).toFixed(1)}%
+            </span>
+          </div>
+        </div>
+        {atRiskEmployees.length > 0 && (
+          <EmployeeListComponent
+            employees={atRiskEmployees}
+            styles={styles}
+            onEmployeeSelect={onEmployeeSelect}
+            maxVisible={4}
+          />
+        )}
+      </div>
+    </div>
+  );
+};
+
+interface RaiseReviewNeededCardProps {
+  additionalMetrics: any;
+  onEmployeeSelect?: (employee: any) => void;
+  styles: any;
+}
+
+const RaiseReviewNeededCard: React.FC<RaiseReviewNeededCardProps> = ({
+  additionalMetrics,
+  onEmployeeSelect,
+  styles
+}) => {
+  const overdueEmployees = additionalMetrics.overdueList.map(({ employee }: any) => employee);
+
+  return (
+    <div className={`${styles.metricCard} ${styles.raiseCard}`}>
+      <div className={styles.cardHeader}>
+        <div className={styles.cardIcon}>⏱️</div>
+        <div className={styles.cardTitle}>Raise Review Needed</div>
+      </div>
+      <div className={styles.cardContent}>
+        <div className={styles.primaryMetric}>
+          <div className={styles.metricValue}>{additionalMetrics.overdueCount18}</div>
+          <div className={styles.metricLabel}>Over 18 Months</div>
+        </div>
+        <div className={styles.secondaryMetrics}>
+          <div className={styles.secondaryMetric}>
+            <span className={styles.secondaryLabel}>Over 24 Months:</span>
+            <span className={styles.secondaryValue}>{additionalMetrics.overdueCount24}</span>
+          </div>
+        </div>
+        {overdueEmployees.length > 0 && (
+          <EmployeeListComponent
+            employees={overdueEmployees}
+            styles={styles}
+            onEmployeeSelect={onEmployeeSelect}
+            maxVisible={4}
+          />
+        )}
+      </div>
+    </div>
+  );
+};
+
 export const MetricsCards: React.FC<MetricsCardsProps> = ({
   totalEmployees,
-  totalBudget,
-  budgetCurrency,
   budgetMetrics,
   employeeData,
   onEmployeeSelect,
@@ -146,26 +420,6 @@ export const MetricsCards: React.FC<MetricsCardsProps> = ({
     };
   }, [employeeData]);
 
-  // Format currency
-  const formatCurrency = (amount: number): string => {
-    try {
-      return new Intl.NumberFormat('en-US', {
-        style: 'currency',
-        currency: budgetCurrency,
-        minimumFractionDigits: 0,
-        maximumFractionDigits: 0,
-      }).format(amount);
-    } catch {
-      return `${budgetCurrency} ${amount.toLocaleString()}`;
-    }
-  };
-
-  // Get status color for metrics
-  const getStatusColor = (value: number, thresholds: { good: number; warning: number }): string => {
-    if (value >= thresholds.good) return 'good';
-    if (value >= thresholds.warning) return 'warning';
-    return 'critical';
-  };
 
   return (
     <div className={styles.metricsCards}>
@@ -177,317 +431,34 @@ export const MetricsCards: React.FC<MetricsCardsProps> = ({
       </div>
 
       <div className={styles.cardsGrid}>
-        {/* Budget Overview Card */}
-        <div className={`${styles.metricCard} ${styles.budgetCard}`}>
-          <div className={styles.cardHeader}>
-            <div className={styles.cardIcon}>💰</div>
-            <div className={styles.cardTitle}>Budget Overview</div>
-          </div>
-          <div className={styles.cardContent}>
-            <div className={styles.primaryMetric}>
-              <div className={styles.metricValue}>
-                {formatCurrency(budgetMetrics.totalProposedRaises)}
-              </div>
-              <div className={styles.metricLabel}>Total Allocated</div>
-            </div>
-            <div className={styles.secondaryMetrics}>
-              <div className={styles.secondaryMetric}>
-                <span className={styles.secondaryLabel}>Budget:</span>
-                <span className={styles.secondaryValue}>
-                  {formatCurrency(totalBudget)}
-                </span>
-              </div>
-              <div className={styles.secondaryMetric}>
-                <span className={styles.secondaryLabel}>Remaining:</span>
-                <span className={`${styles.secondaryValue} ${budgetMetrics.remainingBudget < 0 ? styles.negative : styles.positive}`}>
-                  {formatCurrency(budgetMetrics.remainingBudget)}
-                </span>
-              </div>
-              <div className={styles.secondaryMetric}>
-                <span className={styles.secondaryLabel}>Utilization:</span>
-                <span className={`${styles.secondaryValue} ${styles[getStatusColor(budgetMetrics.budgetUtilization, { good: 80, warning: 50 })]}`}>
-                  {budgetMetrics.budgetUtilization.toFixed(1)}%
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Employee Overview Card */}
-        <div className={`${styles.metricCard} ${styles.employeeCard}`}>
-          <div className={styles.cardHeader}>
-            <div className={styles.cardIcon}>👥</div>
-            <div className={styles.cardTitle}>Employee Overview</div>
-          </div>
-          <div className={styles.cardContent}>
-            <div className={styles.primaryMetric}>
-              <div className={styles.metricValue}>{totalEmployees}</div>
-              <div className={styles.metricLabel}>Total Employees</div>
-            </div>
-            <div className={styles.secondaryMetrics}>
-              <div className={styles.secondaryMetric}>
-                <span className={styles.secondaryLabel}>With Raises:</span>
-                <span className={styles.secondaryValue}>
-                  {additionalMetrics.employeesWithRaises} ({((additionalMetrics.employeesWithRaises / totalEmployees) * 100).toFixed(1)}%)
-                </span>
-              </div>
-              <div className={styles.secondaryMetric}>
-                <span className={styles.secondaryLabel}>High Performers:</span>
-                <span className={styles.secondaryValue}>
-                  {additionalMetrics.highPerformers} ({((additionalMetrics.highPerformers / totalEmployees) * 100).toFixed(1)}%)
-                </span>
-              </div>
-              <div className={styles.secondaryMetric}>
-                <span className={styles.secondaryLabel}>At Risk:</span>
-                <span className={`${styles.secondaryValue} ${additionalMetrics.atRiskEmployees > 0 ? styles.warning : styles.good}`}>
-                  {additionalMetrics.atRiskEmployees}
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Performance Metrics Card */}
-        <div className={`${styles.metricCard} ${styles.performanceCard}`}>
-          <div className={styles.cardHeader}>
-            <div className={styles.cardIcon}>⭐</div>
-            <div className={styles.cardTitle}>Performance Metrics</div>
-          </div>
-          <div className={styles.cardContent}>
-            <div className={styles.primaryMetric}>
-              <div className={styles.metricValue}>
-                {additionalMetrics.avgPerformance.toFixed(1)}
-              </div>
-              <div className={styles.metricLabel}>Avg Performance Rating</div>
-            </div>
-            <div className={styles.secondaryMetrics}>
-              <div className={styles.secondaryMetric}>
-                <span className={styles.secondaryLabel}>Avg Comparatio:</span>
-                <span className={`${styles.secondaryValue} ${styles[getStatusColor(additionalMetrics.avgComparatio * 100, { good: 90, warning: 80 })]}`}>
-                  {(additionalMetrics.avgComparatio * 100).toFixed(1)}%
-                </span>
-              </div>
-              <div className={styles.secondaryMetric}>
-                <span className={styles.secondaryLabel}>Avg Raise %:</span>
-                <span className={styles.secondaryValue}>
-                  {budgetMetrics.averageRaisePercent.toFixed(1)}%
-                </span>
-              </div>
-              <div className={styles.secondaryMetric}>
-                <span className={styles.secondaryLabel}>Currencies:</span>
-                <span className={styles.secondaryValue}>
-                  {additionalMetrics.currencyCount}
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Salary Analysis Card */}
-        <div className={`${styles.metricCard} ${styles.salaryCard}`}>
-          <div className={styles.cardHeader}>
-            <div className={styles.cardIcon}>💵</div>
-            <div className={styles.cardTitle}>Salary Analysis</div>
-          </div>
-          <div className={styles.cardContent}>
-            <div className={styles.primaryMetric}>
-              <div className={styles.metricValue}>
-                {formatCurrency(budgetMetrics.totalCurrentSalary / totalEmployees)}
-              </div>
-              <div className={styles.metricLabel}>Avg Current Salary</div>
-            </div>
-            <div className={styles.secondaryMetrics}>
-              <div className={styles.secondaryMetric}>
-                <span className={styles.secondaryLabel}>Total Payroll:</span>
-                <span className={styles.secondaryValue}>
-                  {formatCurrency(budgetMetrics.totalCurrentSalary)}
-                </span>
-              </div>
-              <div className={styles.secondaryMetric}>
-                <span className={styles.secondaryLabel}>Avg Raise Amount:</span>
-                <span className={styles.secondaryValue}>
-                  {additionalMetrics.employeesWithRaises > 0 
-                    ? formatCurrency(budgetMetrics.totalProposedRaises / additionalMetrics.employeesWithRaises)
-                    : formatCurrency(0)
-                  }
-                </span>
-              </div>
-              <div className={styles.secondaryMetric}>
-                <span className={styles.secondaryLabel}>Budget Impact:</span>
-                <span className={styles.secondaryValue}>
-                  {totalBudget > 0 
-                    ? ((budgetMetrics.totalProposedRaises / budgetMetrics.totalCurrentSalary) * 100).toFixed(2)
-                    : '0.00'
-                  }% of payroll
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
 
         {/* Range Breaches Card */}
-        <div className={`${styles.metricCard} ${styles.rangeCard}`}>
-          <div className={styles.cardHeader}>
-            <div className={styles.cardIcon}>📏</div>
-            <div className={styles.cardTitle}>Range Breaches</div>
-          </div>
-          <div className={styles.cardContent}>
-            <div className={styles.primaryMetric}>
-              <div className={styles.metricValue}>
-                {additionalMetrics.rangeBreaches.belowRange + additionalMetrics.rangeBreaches.aboveRange}
-              </div>
-              <div className={styles.metricLabel}>Total Breaches</div>
-            </div>
-            <div className={styles.secondaryMetrics}>
-              <div
-                className={`${styles.secondaryMetric} ${styles.clickable}`}
-                onClick={() => onQuickFilter?.('belowRange')}
-              >
-                <span className={styles.secondaryLabel}>Below Min:</span>
-                <span className={styles.secondaryValue}>
-                  {additionalMetrics.rangeBreaches.belowRange}{' '}
-                  ({totalEmployees > 0
-                    ? ((additionalMetrics.rangeBreaches.belowRange / totalEmployees) * 100).toFixed(1)
-                    : '0.0'}%)
-                </span>
-              </div>
-              <div
-                className={`${styles.secondaryMetric} ${styles.clickable}`}
-                onClick={() => onQuickFilter?.('aboveRange')}
-              >
-                <span className={styles.secondaryLabel}>Above Max:</span>
-                <span className={styles.secondaryValue}>
-                  {additionalMetrics.rangeBreaches.aboveRange}{' '}
-                  ({totalEmployees > 0
-                    ? ((additionalMetrics.rangeBreaches.aboveRange / totalEmployees) * 100).toFixed(1)
-                    : '0.0'}%)
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
+        <RangeBreachesCard 
+          additionalMetrics={additionalMetrics}
+          totalEmployees={totalEmployees}
+          employeeData={employeeData}
+          onEmployeeSelect={onEmployeeSelect}
+          onQuickFilter={onQuickFilter}
+          styles={styles}
+        />
 
         {/* Risk Assessment Card */}
-        <div className={`${styles.metricCard} ${styles.riskCard}`}>
-          <div className={styles.cardHeader}>
-            <div className={styles.cardIcon}>⚠️</div>
-            <div className={styles.cardTitle}>Risk Assessment</div>
-          </div>
-          <div className={styles.cardContent}>
-            <div className={styles.primaryMetric}>
-              <div className={styles.metricValue}>
-                {additionalMetrics.atRiskEmployees}
-              </div>
-              <div className={styles.metricLabel}>At-Risk Employees</div>
-            </div>
-            <div className={styles.secondaryMetrics}>
-              <div className={styles.secondaryMetric}>
-                <span className={styles.secondaryLabel}>Budget Risk:</span>
-                <span className={`${styles.secondaryValue} ${budgetMetrics.budgetUtilization > 100 ? styles.critical : budgetMetrics.budgetUtilization > 90 ? styles.warning : styles.good}`}>
-                  {budgetMetrics.budgetUtilization > 100 ? 'Over Budget' : 
-                   budgetMetrics.budgetUtilization > 90 ? 'High Risk' : 'Low Risk'}
-                </span>
-              </div>
-              <div className={styles.secondaryMetric}>
-                <span className={styles.secondaryLabel}>Policy Violations:</span>
-                <span className={styles.secondaryValue}>
-                  TBD (Task 6.0)
-                </span>
-              </div>
-              <div className={styles.secondaryMetric}>
-                <span className={styles.secondaryLabel}>Data Quality:</span>
-                <span className={styles.secondaryValue}>
-                  {((employeeData.filter(emp => emp.name && (emp.employeeId || emp.email)).length / totalEmployees) * 100).toFixed(1)}%
-                </span>
-              </div>
-            </div>
-          </div>
-        </div>
+        <RiskAssessmentCard 
+          additionalMetrics={additionalMetrics}
+          budgetMetrics={budgetMetrics}
+          totalEmployees={totalEmployees}
+          employeeData={employeeData}
+          onEmployeeSelect={onEmployeeSelect}
+          styles={styles}
+        />
 
-        {/* Raise Recency Card */}
-        <div className={`${styles.metricCard} ${styles.raiseCard}`}>
-          <div className={styles.cardHeader}>
-            <div className={styles.cardIcon}>⏱️</div>
-            <div className={styles.cardTitle}>Raise Review Needed</div>
-          </div>
-          <div className={styles.cardContent}>
-            <div className={styles.primaryMetric}>
-              <div className={styles.metricValue}>{additionalMetrics.overdueCount18}</div>
-              <div className={styles.metricLabel}>Over 18 Months</div>
-            </div>
-            <div className={styles.secondaryMetrics}>
-              <div className={styles.secondaryMetric}>
-                <span className={styles.secondaryLabel}>Over 24 Months:</span>
-                <span className={styles.secondaryValue}>{additionalMetrics.overdueCount24}</span>
-              </div>
-            </div>
-            {additionalMetrics.overdueList.length > 0 && (
-              <ul className={styles.employeeList}>
-                {additionalMetrics.overdueList.map(({ employee, months }) => {
-                  const name =
-                    employee.name ||
-                    employee.employeeName ||
-                    employee.fullName ||
-                    employee['Employee Name'] ||
-                    'Unknown';
-                  const id =
-                    employee.employeeId ||
-                    employee.id ||
-                    employee.email ||
-                    name;
-                  return (
-                    <li key={id} className={styles.employeeItem}>
-                      <button
-                        type="button"
-                        className={styles.employeeLink}
-                        onClick={() => onEmployeeSelect && onEmployeeSelect(employee)}
-                      >
-                        {name}
-                      </button>
-                      <span className={styles.employeeMonths}>{months} mo</span>
-                    </li>
-                  );
-                })}
-              </ul>
-            )}
-          </div>
-        </div>
+        {/* Raise Review Needed Card */}
+        <RaiseReviewNeededCard 
+          additionalMetrics={additionalMetrics}
+          onEmployeeSelect={onEmployeeSelect}
+          styles={styles}
+        />
 
-        {/* Quick Stats Card */}
-        <div className={`${styles.metricCard} ${styles.statsCard}`}>
-          <div className={styles.cardHeader}>
-            <div className={styles.cardIcon}>📈</div>
-            <div className={styles.cardTitle}>Quick Stats</div>
-          </div>
-          <div className={styles.cardContent}>
-            <div className={styles.quickStats}>
-              <div className={styles.quickStat}>
-                <div className={styles.quickStatValue}>
-                  {((additionalMetrics.employeesWithRaises / totalEmployees) * 100).toFixed(0)}%
-                </div>
-                <div className={styles.quickStatLabel}>Receiving Raises</div>
-              </div>
-              <div className={styles.quickStat}>
-                <div className={styles.quickStatValue}>
-                  {((additionalMetrics.highPerformers / totalEmployees) * 100).toFixed(0)}%
-                </div>
-                <div className={styles.quickStatLabel}>High Performers</div>
-              </div>
-              <div className={styles.quickStat}>
-                <div className={styles.quickStatValue}>
-                  {budgetMetrics.averageRaisePercent.toFixed(1)}%
-                </div>
-                <div className={styles.quickStatLabel}>Avg Raise</div>
-              </div>
-              <div className={styles.quickStat}>
-                <div className={styles.quickStatValue}>
-                  {additionalMetrics.currencyCount}
-                </div>
-                <div className={styles.quickStatLabel}>Currencies</div>
-              </div>
-            </div>
-          </div>
-        </div>
       </div>
     </div>
   );

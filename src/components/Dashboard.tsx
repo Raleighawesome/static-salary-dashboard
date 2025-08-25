@@ -7,7 +7,6 @@ import { EmployeeTable } from './EmployeeTable';
 import { MetricsCards } from './MetricsCards';
 import EmployeeDetail from './EmployeeDetail';
 import PolicyViolationAlert from './PolicyViolationAlert';
-import PolicyViolationSummary from './PolicyViolationSummary';
 import { CSVExporter } from '../services/csvExporter';
 import { PolicyValidator } from '../utils/policyValidation';
 import styles from './Dashboard.module.css';
@@ -51,7 +50,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
   const [policyViolations, setPolicyViolations] = useState<PolicyViolation[]>([]);
   const [isExporting, setIsExporting] = useState(false);
   const [pendingAction, setPendingAction] = useState<'export' | 'validate' | null>(null);
-  const [importViolations, setImportViolations] = useState<PolicyViolation[]>([]);
 
   // Calculate current budget usage and metrics
   const budgetMetrics = useMemo(() => {
@@ -165,22 +163,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
       .filter(emp => emp !== null); // Remove any failed mappings
   }, [employeeData]);
 
-  // Validate policies after data import
-  useEffect(() => {
-    if (employeeData.length === 0) {
-      setImportViolations([]);
-      return;
-    }
-    const violations = PolicyValidator.validateAllEmployees(
-      employeeData,
-      {
-        totalBudget,
-        currentBudgetUsage: budgetMetrics.totalProposedRaises,
-        employeeCount: employeeData.length
-      }
-    );
-    setImportViolations(violations);
-  }, [employeeData, totalBudget, budgetMetrics.totalProposedRaises]);
+  
 
 
   // Handle employee selection for details view
@@ -410,11 +393,6 @@ export const Dashboard: React.FC<DashboardProps> = ({
                 utilizationPercent={budgetMetrics.budgetUtilization}
               />
             </div>
-            {importViolations.length > 0 && (
-              <div className={styles.violationSummary}>
-                <PolicyViolationSummary violations={importViolations} />
-              </div>
-            )}
             
             {/* Metrics Cards */}
             <div className={styles.metricsSection}>
