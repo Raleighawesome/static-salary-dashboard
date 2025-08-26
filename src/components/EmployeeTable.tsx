@@ -23,7 +23,11 @@ type FilterType =
   | 'highPerformers'
   | 'atRisk'
   | 'belowRange'
-  | 'aboveRange';
+  | 'aboveRange'
+  | 'below75'
+  | 'below85NotBelow75'
+  | 'above85'
+  | 'seg1_24m';
 
 // Options for ModernSelect components
 const FILTER_OPTIONS = [
@@ -33,6 +37,10 @@ const FILTER_OPTIONS = [
   { value: 'atRisk', label: 'At Risk', icon: '⚠️' },
   { value: 'belowRange', label: 'Below Salary Range', icon: '⬇️' },
   { value: 'aboveRange', label: 'Above Salary Range', icon: '⬆️' },
+  { value: 'below75', label: 'Below minimum', icon: '🔴' },
+  { value: 'below85NotBelow75', label: 'Below 85% (not below 75%)', icon: '🟡' },
+  { value: 'above85', label: 'Above 85%', icon: '🟢' },
+  { value: 'seg1_24m', label: 'Seg1 24m+', icon: '🍄' },
 ];
 
 const PAGE_SIZE_OPTIONS = [
@@ -509,6 +517,60 @@ export const EmployeeTable: React.FC<EmployeeTableProps> = ({
             const max = emp.salaryGradeMax;
             return typeof base === 'number' && typeof max === 'number' && base > max;
           }
+          case 'below75':
+            return emp.comparatio && emp.comparatio <= 75;
+          case 'below85NotBelow75':
+            return emp.comparatio && emp.comparatio < 85 && emp.comparatio > 75;
+          case 'above85':
+            return emp.comparatio && emp.comparatio >= 85;
+          case 'seg1_24m': {
+            try {
+              // Check for Segment 1 - using the same logic as getAdjustmentConsiderations
+              const seg = (emp.salaryRangeSegment || '').toString().toLowerCase();
+              const isSegment1 = seg === 'segment 1' || seg === '1' || seg.includes('segment 1');
+              
+              // Calculate tenure information using EmployeeCalculations - same as working logic
+              const extractFieldValue = (fieldNames: string[]) => {
+                for (const fieldName of fieldNames) {
+                  const value = emp[fieldName];
+                  if (value !== undefined && value !== null && value !== '') {
+                    return value;
+                  }
+                }
+                return undefined;
+              };
+
+              const tenureInfo = EmployeeCalculations.calculateTenure(
+                extractFieldValue([
+                  'Latest Hire Date', 'hireDate', 'hire_date', 'start_date',
+                  'Hire Date', 'Start Date'
+                ]),
+                extractFieldValue([
+                  'Job Entry Start Date', 'roleStartDate', 'role_start_date', 'current_role_start',
+                  'Role Start Date', 'Current Role Start'
+                ]),
+                extractFieldValue([
+                  'Last Increase Date', 'lastRaiseDate', 'last_raise_date', 'lastRaise',
+                  'Last Raise Date'
+                ])
+              );
+
+              const timeInRoleMonths = tenureInfo?.timeInRoleMonths || 0;
+              
+              // Check for performance issues using the same logic as getAdjustmentConsiderations
+              const derivedRating = emp.performanceRating ||
+                emp['CALIBRATED VALUE: Overall Performance Rating'] ||
+                emp['calibrated value: overall performance rating'] ||
+                '';
+              const perfClass = getPerformanceBadge(derivedRating).className;
+              const hasPerformanceIssues = perfClass === 'poor' || perfClass === 'critical';
+              
+              return isSegment1 && timeInRoleMonths > 24 && !hasPerformanceIssues;
+            } catch (error) {
+              console.error('Error in seg1_24m filter:', error);
+              return false;
+            }
+          }
           default:
             return true;
         }
@@ -549,7 +611,7 @@ export const EmployeeTable: React.FC<EmployeeTableProps> = ({
     });
 
     return filtered;
-  }, [employeeData, searchTerm, filterBy, managerFilter, sortField, sortDirection]);
+  }, [employeeData, searchTerm, filterBy, managerFilter, sortField, sortDirection, getPerformanceBadge]);
 
   // Pagination
   const totalPages = Math.ceil(processedEmployees.length / pageSize);

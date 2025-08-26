@@ -17,7 +17,7 @@ interface MetricsCardsProps {
   budgetMetrics: BudgetMetrics;
   employeeData: any[];
   onEmployeeSelect?: (employee: any) => void;
-  onQuickFilter?: (filter: 'belowRange' | 'aboveRange') => void;
+  onQuickFilter?: (filter: 'belowRange' | 'aboveRange' | 'below75' | 'below85NotBelow75' | 'above85' | 'seg1_24m') => void;
 }
 
 interface EmployeeListComponentProps {
@@ -195,6 +195,7 @@ interface RiskAssessmentCardProps {
   totalEmployees: number;
   employeeData: any[];
   onEmployeeSelect?: (employee: any) => void;
+  onQuickFilter?: (filter: 'below75' | 'below85NotBelow75') => void;
   styles: any;
 }
 
@@ -204,11 +205,20 @@ const RiskAssessmentCard: React.FC<RiskAssessmentCardProps> = ({
   totalEmployees,
   employeeData,
   onEmployeeSelect,
+  onQuickFilter,
   styles
 }) => {
   const atRiskEmployees = employeeData.filter(emp =>
-    (emp.comparatio && emp.comparatio < 0.8) ||
+    (emp.comparatio && emp.comparatio < 80) ||
     (emp.retentionRisk && emp.retentionRisk > 70)
+  );
+
+  const below75Employees = employeeData.filter(emp =>
+    emp.comparatio && emp.comparatio <= 75
+  );
+
+  const below85NotBelow75Employees = employeeData.filter(emp =>
+    emp.comparatio && emp.comparatio < 85 && emp.comparatio > 75
   );
 
 
@@ -216,33 +226,36 @@ const RiskAssessmentCard: React.FC<RiskAssessmentCardProps> = ({
     <div className={`${styles.metricCard} ${styles.riskCard}`}>
       <div className={styles.cardHeader}>
         <div className={styles.cardIcon}>⚠️</div>
-        <div className={styles.cardTitle}>Risk Assessment</div>
+        <div className={styles.cardTitle}>Comparatio Assessment</div>
       </div>
       <div className={styles.cardContent}>
-        <div className={styles.primaryMetric}>
+        <div 
+          className={styles.primaryMetric}
+          onClick={() => onQuickFilter?.('below75')}
+          style={{ cursor: 'pointer' }}
+        >
           <div className={styles.metricValue}>
-            {additionalMetrics.atRiskEmployees}
+            {below75Employees.length}
           </div>
-          <div className={styles.metricLabel}>At-Risk Employees</div>
+          <div className={styles.metricLabel}>Below minimum</div>
         </div>
         <div className={styles.secondaryMetrics}>
-          <div className={styles.secondaryMetric}>
-            <span className={styles.secondaryLabel}>Budget Risk:</span>
-            <span className={`${styles.secondaryValue} ${budgetMetrics.budgetUtilization > 100 ? styles.critical : budgetMetrics.budgetUtilization > 90 ? styles.warning : styles.good}`}>
-              {budgetMetrics.budgetUtilization > 100 ? 'Over Budget' : 
-               budgetMetrics.budgetUtilization > 90 ? 'High Risk' : 'Low Risk'}
-            </span>
-          </div>
-          <div className={styles.secondaryMetric}>
-            <span className={styles.secondaryLabel}>Data Quality:</span>
+          <div
+            className={`${styles.secondaryMetric} ${styles.clickable}`}
+            onClick={() => onQuickFilter?.('below85NotBelow75')}
+          >
+            <span className={styles.secondaryLabel}>Below 85% (not below minimum):</span>
             <span className={styles.secondaryValue}>
-              {((employeeData.filter(emp => emp.name && (emp.employeeId || emp.email)).length / totalEmployees) * 100).toFixed(1)}%
+              {below85NotBelow75Employees.length}{' '}
+              ({totalEmployees > 0
+                ? ((below85NotBelow75Employees.length / totalEmployees) * 100).toFixed(1)
+                : '0.0'}%)
             </span>
           </div>
         </div>
-        {atRiskEmployees.length > 0 && (
+        {below75Employees.length > 0 && (
           <EmployeeListComponent
-            employees={atRiskEmployees}
+            employees={below75Employees}
             styles={styles}
             onEmployeeSelect={onEmployeeSelect}
             maxVisible={4}
@@ -346,7 +359,7 @@ export const MetricsCards: React.FC<MetricsCardsProps> = ({
 
     // At-risk employees (low comparatio or high retention risk)
     const atRiskEmployees = employeeData.filter(emp =>
-      (emp.comparatio && emp.comparatio < 0.8) ||
+      (emp.comparatio && emp.comparatio < 80) ||
       (emp.retentionRisk && emp.retentionRisk > 70)
     ).length;
 
@@ -449,6 +462,7 @@ export const MetricsCards: React.FC<MetricsCardsProps> = ({
           totalEmployees={totalEmployees}
           employeeData={employeeData}
           onEmployeeSelect={onEmployeeSelect}
+          onQuickFilter={onQuickFilter}
           styles={styles}
         />
 

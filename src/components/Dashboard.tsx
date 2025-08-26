@@ -28,7 +28,11 @@ type EmployeeFilter =
   | 'highPerformers'
   | 'atRisk'
   | 'belowRange'
-  | 'aboveRange';
+  | 'aboveRange'
+  | 'below75'
+  | 'below85NotBelow75'
+  | 'above85'
+  | 'seg1_24m';
 
 export const Dashboard: React.FC<DashboardProps> = ({
   employeeData,

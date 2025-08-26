@@ -436,189 +436,7 @@ export const EmployeeDetail: React.FC<EmployeeDetailProps> = ({
         <div className={styles.contentGrid}>
           {/* Left Column */}
           <div className={styles.leftColumn}>
-            {/* 1. Current Compensation Card */}
-            <div className={styles.card}>
-              <h3 className={styles.cardTitle}>💰 Current Compensation</h3>
-              <div className={styles.salaryInfo}>
-                <div className={styles.currentSalary}>
-                  <span className={styles.label}>Base Salary:</span>
-                  <span className={styles.value}>
-                    {(() => {
-                      // Use the properly converted USD value for display
-                      const salaryUSD = employee.baseSalaryUSD || 0;
-                      const originalCurrency = employee.currency || 'USD';
-                      const originalSalary = employee.baseSalary || 0;
-                      
-                      if (salaryUSD <= 0) {
-                        return 'Not Available';
-                      }
-                      
-                      // Always show USD first
-                      const usdDisplay = formatCurrencyDisplay(salaryUSD, 'USD');
-                      
-                      // For non-USD employees, always show original currency in parentheses
-                      if (originalCurrency !== 'USD' && originalSalary > 0) {
-                        return (
-                          <>
-                            {usdDisplay}
-                            <div className={styles.originalCurrency}>
-                              ({formatCurrencyDisplay(originalSalary, originalCurrency)})
-                            </div>
-                          </>
-                        );
-                      }
-                      
-                      return usdDisplay;
-                    })()}
-                  </span>
-                </div>
-                <div className={`${styles.comparatio} ${analysis.salaryAnalysis.comparatio > 0 && analysis.salaryAnalysis.comparatio < 76 ? styles.belowMinimum : ''}`}>
-                  <span className={styles.label}>Comparatio:</span>
-                  <span className={`${styles.value} ${analysis.salaryAnalysis.comparatio > 0 && analysis.salaryAnalysis.comparatio < 76 ? styles.warning : ''}`}>
-                    {analysis.salaryAnalysis.comparatio > 0 
-                      ? EmployeeCalculations.formatPercentage(analysis.salaryAnalysis.comparatio)
-                      : 'Not Available'
-                    }
-                  </span>
-                </div>
-                {(employee.belowRangeMinimum === 'Yes' || 
-                  employee.belowRangeMinimum === 'yes' ||
-                  employee.belowRangeMinimum === 'Below Minimum') && (
-                  <div className={`${styles.comparatio} ${styles.belowMinimum}`}>
-                    <span className={styles.label}>⚠️ Below Range:</span>
-                    <span className={`${styles.value} ${styles.warning}`}>
-                      Below Minimum
-                    </span>
-                  </div>
-                )}
-                <div className={styles.lastRaise}>
-                  <span className={styles.label}>Last Raise Received:</span>
-                  <span className={styles.value}>
-                    {(() => {
-                      const lastRaiseDate = employee.lastRaiseDate ||
-                        employee['Last salary change date'] ||
-                        employee['last_salary_change_date'] ||
-                        employee['last_raise_date'] ||
-                        employee['Last Raise Date'];
-                      
-                      const formattedDate = EmployeeCalculations.formatDate(lastRaiseDate);
-                      
-                      if (formattedDate === 'Not Available') {
-                        return formattedDate;
-                      }
-                      
-                      // Calculate months since last raise
-                      const parsedDate = EmployeeCalculations.parseDate(lastRaiseDate);
-                      if (parsedDate) {
-                        const now = new Date();
-                        const monthsSince = Math.floor((now.getTime() - parsedDate.getTime()) / (1000 * 60 * 60 * 24 * 30.44));
-                        return `${monthsSince} months ago (${formattedDate})`;
-                      }
-                      
-                      return formattedDate;
-                    })()}
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {/* 2. Tenure & Experience Card */}
-            <div className={styles.card}>
-              <h3 className={styles.cardTitle}>🕒 Tenure & Experience</h3>
-              <div className={styles.tenureInfo}>
-                {/* 1. Role Start Date - Always first */}
-                <div className={styles.tenureDetail}>
-                  <span className={styles.label}>Role Start Date:</span>
-                  <span className={styles.value}>
-                    {EmployeeCalculations.formatDate(
-                      employee.roleStartDate ||
-                      employee['Job Entry Start Date'] ||
-                      employee['role_start_date'] ||
-                      employee['current_role_start'] ||
-                      employee['Role Start Date'] ||
-                      employee['Current Role Start']
-                    )}
-                  </span>
-                </div>
-                
-                {/* 2. Time in Role - Always second */}
-                <div className={styles.tenureDetail}>
-                  <span className={styles.label}>Time in Role:</span>
-                  <span className={styles.value}>
-                    {analysis.tenureInfo.timeInRoleMonths > 0 
-                      ? `${Math.floor(analysis.tenureInfo.timeInRoleMonths / 12)} years, ${analysis.tenureInfo.timeInRoleMonths % 12} months`
-                      : 'Not Available'
-                    }
-                  </span>
-                </div>
-                
-                {/* Manager-specific fields: 3. Direct Reports, 4. Managers Under, 5. Total Team Size */}
-                {(analysis.spanOfControl.isManager || analysis.spanOfControl.isTeamLead) && (
-                  <div className={styles.spanOfControlGroup}>
-                    <h5 className={styles.spanOfControlTitle}>Span of control</h5>
-                    <div className={styles.tenureDetail}>
-                      <span className={styles.label}>Direct Reports:</span>
-                      <span className={styles.value}>
-                        {analysis.spanOfControl.directReports} employee{analysis.spanOfControl.directReports === 1 ? '' : 's'}
-                      </span>
-                    </div>
-                    {analysis.spanOfControl.managersUnder > 0 && (
-                      <div className={styles.tenureDetail}>
-                        <span className={styles.label}>Managers Under:</span>
-                        <span className={styles.value}>
-                          {analysis.spanOfControl.managersUnder} manager{analysis.spanOfControl.managersUnder === 1 ? '' : 's'}
-                        </span>
-                      </div>
-                    )}
-                    {analysis.spanOfControl.totalTeamSize > analysis.spanOfControl.directReports && (
-                      <div className={styles.tenureDetail}>
-                        <span className={styles.label}>Total Team Size:</span>
-                        <span className={`${styles.value} ${styles.teamSize}`}>
-                          {analysis.spanOfControl.totalTeamSize} people
-                          <span className={styles.teamBreakdown}>
-                            ({analysis.spanOfControl.directReports} direct, {analysis.spanOfControl.totalTeamSize - analysis.spanOfControl.directReports} indirect)
-                          </span>
-                        </span>
-                      </div>
-                    )}
-                  </div>
-                )}
-                
-                {/* 6. Experience Level (3 for non-managers) */}
-                <div className={styles.tenureDetail}>
-                  <span className={styles.label}>Experience Level:</span>
-                  <span className={`${styles.value} ${styles[analysis.tenureInfo.tenureBand.toLowerCase()]}`}>
-                    {analysis.tenureInfo.tenureBand}
-                  </span>
-                </div>
-                
-                {/* 7. Total Service with Hire Date (4 for non-managers) */}
-                <div className={styles.tenureDetail}>
-                  <span className={styles.label}>Total Service:</span>
-                  <span className={styles.value}>
-                    {analysis.tenureInfo.totalTenureMonths > 0 
-                      ? `${Math.floor(analysis.tenureInfo.totalTenureMonths / 12)} years, ${analysis.tenureInfo.totalTenureMonths % 12} months (${EmployeeCalculations.formatDate(
-                          employee.hireDate ||
-                          employee['Latest Hire Date'] ||
-                          employee['hire_date'] ||
-                          employee['start_date'] ||
-                          employee['Hire Date'] ||
-                          employee['Start Date']
-                        )})`
-                      : `Not Available (${EmployeeCalculations.formatDate(
-                          employee.hireDate ||
-                          employee['Latest Hire Date'] ||
-                          employee['hire_date'] ||
-                          employee['start_date'] ||
-                          employee['Hire Date'] ||
-                          employee['Start Date']
-                        )})`}
-                  </span>
-                </div>
-              </div>
-            </div>
-
-            {/* 3. Proposed Adjustment Card */}
+            {/* 1. Proposed Adjustment Card */}
             <div className={styles.card}>
               <h3 className={styles.cardTitle}>🎯 Proposed Adjustment</h3>
               <div className={styles.proposedRaise}>
@@ -752,7 +570,105 @@ export const EmployeeDetail: React.FC<EmployeeDetailProps> = ({
               </div>
             </div>
 
-            {/* 4. AI Recommendation Card */}
+
+            {/* 2. Tenure & Experience Card */}
+            <div className={styles.card}>
+              <h3 className={styles.cardTitle}>🕒 Tenure & Experience</h3>
+              <div className={styles.tenureInfo}>
+                {/* 1. Role Start Date - Always first */}
+                <div className={styles.tenureDetail}>
+                  <span className={styles.label}>Role Start Date:</span>
+                  <span className={styles.value}>
+                    {EmployeeCalculations.formatDate(
+                      employee.roleStartDate ||
+                      employee['Job Entry Start Date'] ||
+                      employee['role_start_date'] ||
+                      employee['current_role_start'] ||
+                      employee['Role Start Date'] ||
+                      employee['Current Role Start']
+                    )}
+                  </span>
+                </div>
+                
+                {/* 2. Time in Role - Always second */}
+                <div className={styles.tenureDetail}>
+                  <span className={styles.label}>Time in Role:</span>
+                  <span className={styles.value}>
+                    {analysis.tenureInfo.timeInRoleMonths > 0 
+                      ? `${Math.floor(analysis.tenureInfo.timeInRoleMonths / 12)} years, ${analysis.tenureInfo.timeInRoleMonths % 12} months`
+                      : 'Not Available'
+                    }
+                  </span>
+                </div>
+                
+                {/* Manager-specific fields: 3. Direct Reports, 4. Managers Under, 5. Total Team Size */}
+                {(analysis.spanOfControl.isManager || analysis.spanOfControl.isTeamLead) && (
+                  <div className={styles.spanOfControlGroup}>
+                    <h5 className={styles.spanOfControlTitle}>Span of control</h5>
+                    <div className={styles.tenureDetail}>
+                      <span className={styles.label}>Direct Reports:</span>
+                      <span className={styles.value}>
+                        {analysis.spanOfControl.directReports} employee{analysis.spanOfControl.directReports === 1 ? '' : 's'}
+                      </span>
+                    </div>
+                    {analysis.spanOfControl.managersUnder > 0 && (
+                      <div className={styles.tenureDetail}>
+                        <span className={styles.label}>Managers Under:</span>
+                        <span className={styles.value}>
+                          {analysis.spanOfControl.managersUnder} manager{analysis.spanOfControl.managersUnder === 1 ? '' : 's'}
+                        </span>
+                      </div>
+                    )}
+                    {analysis.spanOfControl.totalTeamSize > analysis.spanOfControl.directReports && (
+                      <div className={styles.tenureDetail}>
+                        <span className={styles.label}>Total Team Size:</span>
+                        <span className={`${styles.value} ${styles.teamSize}`}>
+                          {analysis.spanOfControl.totalTeamSize} people
+                          <span className={styles.teamBreakdown}>
+                            ({analysis.spanOfControl.directReports} direct, {analysis.spanOfControl.totalTeamSize - analysis.spanOfControl.directReports} indirect)
+                          </span>
+                        </span>
+                      </div>
+                    )}
+                  </div>
+                )}
+                
+                {/* 6. Experience Level (3 for non-managers) */}
+                <div className={styles.tenureDetail}>
+                  <span className={styles.label}>Experience Level:</span>
+                  <span className={`${styles.value} ${styles[analysis.tenureInfo.tenureBand.toLowerCase()]}`}>
+                    {analysis.tenureInfo.tenureBand}
+                  </span>
+                </div>
+                
+                {/* 7. Total Service with Hire Date (4 for non-managers) */}
+                <div className={styles.tenureDetail}>
+                  <span className={styles.label}>Total Service:</span>
+                  <span className={styles.value}>
+                    {analysis.tenureInfo.totalTenureMonths > 0 
+                      ? `${Math.floor(analysis.tenureInfo.totalTenureMonths / 12)} years, ${analysis.tenureInfo.totalTenureMonths % 12} months (${EmployeeCalculations.formatDate(
+                          employee.hireDate ||
+                          employee['Latest Hire Date'] ||
+                          employee['hire_date'] ||
+                          employee['start_date'] ||
+                          employee['Hire Date'] ||
+                          employee['Start Date']
+                        )})`
+                      : `Not Available (${EmployeeCalculations.formatDate(
+                          employee.hireDate ||
+                          employee['Latest Hire Date'] ||
+                          employee['hire_date'] ||
+                          employee['start_date'] ||
+                          employee['Hire Date'] ||
+                          employee['Start Date']
+                        )})`}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+
+            {/* 3. AI Recommendation Card */}
             <div className={styles.card}>
               <h3 className={styles.cardTitle}>🤖 AI Recommendation (Experimental)</h3>
               <div className={styles.recommendation}>
@@ -810,7 +726,84 @@ export const EmployeeDetail: React.FC<EmployeeDetailProps> = ({
 
           {/* Right Column */}
           <div className={styles.rightColumn}>
-            {/* Performance & Impact Card */}
+            {/* 1. Current Compensation Card */}
+            <div className={styles.card}>
+              <h3 className={styles.cardTitle}>💰 Current Compensation</h3>
+              <div className={styles.salaryInfo}>
+                <div className={styles.currentSalary}>
+                  <span className={styles.label}>Base Salary:</span>
+                  <span className={styles.value}>
+                    {(() => {
+                      // Use the properly converted USD value for display
+                      const salaryUSD = employee.baseSalaryUSD || 0;
+                      const originalCurrency = employee.currency || 'USD';
+                      const originalSalary = employee.baseSalary || 0;
+                      
+                      if (salaryUSD <= 0) {
+                        return 'Not Available';
+                      }
+                      
+                      // Always show USD first
+                      const usdDisplay = formatCurrencyDisplay(salaryUSD, 'USD');
+                      
+                      // For non-USD employees, always show original currency in parentheses
+                      if (originalCurrency !== 'USD' && originalSalary > 0) {
+                        return (
+                          <>
+                            {usdDisplay}
+                            <div className={styles.originalCurrency}>
+                              ({formatCurrencyDisplay(originalSalary, originalCurrency)})
+                            </div>
+                          </>
+                        );
+                      }
+                      
+                      return usdDisplay;
+                    })()}
+                  </span>
+                </div>
+                <div className={`${styles.comparatio} ${analysis.salaryAnalysis.comparatio > 0 && analysis.salaryAnalysis.comparatio < 76 ? styles.belowMinimum : ''}`}>
+                  <span className={styles.label}>Comparatio:</span>
+                  <span className={`${styles.value} ${analysis.salaryAnalysis.comparatio > 0 && analysis.salaryAnalysis.comparatio < 76 ? styles.warning : ''}`}>
+                    {analysis.salaryAnalysis.comparatio > 0 
+                      ? EmployeeCalculations.formatPercentage(analysis.salaryAnalysis.comparatio)
+                      : 'Not Available'
+                    }
+                  </span>
+                </div>
+                {/* Removed below-range duplicate row */}
+                <div className={styles.lastRaise}>
+                  <span className={styles.label}>Last Raise Received:</span>
+                  <span className={styles.value}>
+                    {(() => {
+                      const lastRaiseDate = employee.lastRaiseDate ||
+                        employee['Last salary change date'] ||
+                        employee['last_salary_change_date'] ||
+                        employee['last_raise_date'] ||
+                        employee['Last Raise Date'];
+                      
+                      const formattedDate = EmployeeCalculations.formatDate(lastRaiseDate);
+                      
+                      if (formattedDate === 'Not Available') {
+                        return formattedDate;
+                      }
+                      
+                      // Calculate months since last raise
+                      const parsedDate = EmployeeCalculations.parseDate(lastRaiseDate);
+                      if (parsedDate) {
+                        const now = new Date();
+                        const monthsSince = Math.floor((now.getTime() - parsedDate.getTime()) / (1000 * 60 * 60 * 24 * 30.44));
+                        return `${monthsSince} months ago (${formattedDate})`;
+                      }
+                      
+                      return formattedDate;
+                    })()}
+                  </span>
+                </div>
+              </div>
+            </div>
+
+            {/* 2. Performance & Impact Card */}
             <div className={styles.card}>
               <h3 className={styles.cardTitle}>⭐ Performance & Impact</h3>
               <div className={styles.performanceInfo}>
@@ -875,7 +868,7 @@ export const EmployeeDetail: React.FC<EmployeeDetailProps> = ({
               )}
             </div>
 
-            {/* Salary Grade Range Card */}
+            {/* 3. Salary Grade Range Card */
             <div className={styles.card}>
               <h3 className={styles.cardTitle}>📊 Salary Grade Range</h3>
               <div className={styles.salaryRange}>
@@ -927,7 +920,7 @@ export const EmployeeDetail: React.FC<EmployeeDetailProps> = ({
               </div>
             </div>
 
-            {/* Retention Risk Analysis Card */}
+            {/* 4. Retention Risk Analysis Card */}
             <div className={styles.card}>
               <h3 className={styles.cardTitle}>⚠️ Retention Risk Analysis (Experimental)</h3>
               <div className={styles.retentionRisk}>
