@@ -303,7 +303,6 @@ const RaiseReviewNeededCard: React.FC<RaiseReviewNeededCardProps> = ({
 
 export const MetricsCards: React.FC<MetricsCardsProps> = ({
   totalEmployees,
-  budgetMetrics,
   employeeData,
   onEmployeeSelect,
   onQuickFilter,
