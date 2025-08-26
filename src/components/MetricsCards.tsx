@@ -190,8 +190,6 @@ const RangeBreachesCard: React.FC<RangeBreachesCardProps> = ({
 };
 
 interface RiskAssessmentCardProps {
-  additionalMetrics: any;
-  budgetMetrics: any;
   totalEmployees: number;
   employeeData: any[];
   onEmployeeSelect?: (employee: any) => void;
@@ -200,18 +198,12 @@ interface RiskAssessmentCardProps {
 }
 
 const RiskAssessmentCard: React.FC<RiskAssessmentCardProps> = ({
-  additionalMetrics,
-  budgetMetrics,
   totalEmployees,
   employeeData,
   onEmployeeSelect,
   onQuickFilter,
   styles
 }) => {
-  const atRiskEmployees = employeeData.filter(emp =>
-    (emp.comparatio && emp.comparatio < 80) ||
-    (emp.retentionRisk && emp.retentionRisk > 70)
-  );
 
   const below75Employees = employeeData.filter(emp =>
     emp.comparatio && emp.comparatio <= 75
@@ -457,8 +449,6 @@ export const MetricsCards: React.FC<MetricsCardsProps> = ({
 
         {/* Risk Assessment Card */}
         <RiskAssessmentCard 
-          additionalMetrics={additionalMetrics}
-          budgetMetrics={budgetMetrics}
           totalEmployees={totalEmployees}
           employeeData={employeeData}
           onEmployeeSelect={onEmployeeSelect}
