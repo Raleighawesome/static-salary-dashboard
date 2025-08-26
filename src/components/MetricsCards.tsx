@@ -12,9 +12,6 @@ interface BudgetMetrics {
 
 interface MetricsCardsProps {
   totalEmployees: number;
-  totalBudget: number;
-  budgetCurrency: string;
-  budgetMetrics: BudgetMetrics;
   employeeData: any[];
   onEmployeeSelect?: (employee: any) => void;
   onQuickFilter?: (filter: 'belowRange' | 'aboveRange' | 'below75' | 'below85NotBelow75' | 'above85' | 'seg1_24m') => void;
@@ -303,7 +300,6 @@ const RaiseReviewNeededCard: React.FC<RaiseReviewNeededCardProps> = ({
 
 export const MetricsCards: React.FC<MetricsCardsProps> = ({
   totalEmployees,
-  budgetMetrics,
   employeeData,
   onEmployeeSelect,
   onQuickFilter,
