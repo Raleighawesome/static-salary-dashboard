@@ -169,6 +169,18 @@ export class DataProcessor {
           hireDate: emp.hireDate,
           roleStartDate: emp.roleStartDate,
           lastRaiseDate: emp.lastRaiseDate,
+          departmentCode: emp.departmentCode,
+          jobTitle: emp.jobTitle,
+          managerId: emp.managerId,
+          managerName: emp.managerName,
+          futuretalent: emp.futuretalent,
+          movementReadiness: emp.movementReadiness,
+          proposedTalentActions: emp.proposedTalentActions,
+          salaryRangeSegment: emp.salaryRangeSegment,
+          belowRangeMinimum: emp.belowRangeMinimum,
+          managerFlag: emp.managerFlag,
+          teamLeadFlag: emp.teamLeadFlag,
+          managementLevel: emp.managementLevel,
         })));
       }
 
@@ -331,6 +343,41 @@ export class DataProcessor {
   // Get current processed employees
   public static getProcessedEmployees(): Employee[] {
     return [...this.processedEmployees];
+  }
+
+  // Restore session data from storage (for page refresh recovery)
+  public static async restoreSessionData(): Promise<void> {
+    try {
+      // Get stored employees
+      const storedEmployees = await DataStorageService.getEmployees();
+      if (storedEmployees.length > 0) {
+        // Convert back to Employee format and set processed employees
+        this.processedEmployees = storedEmployees.map(emp => ({
+          ...emp,
+          firstName: emp.name.split(' ')[0] || '',
+          lastName: emp.name.split(' ').slice(1).join(' ') || ''
+        }));
+      }
+
+      // Get session metadata to determine what data should be available
+      const currentSession = await DataStorageService.getCurrentSession();
+      if (currentSession) {
+        // Set flags based on session metadata
+        if (currentSession.fileMetadata.salaryFile) {
+          // Mark that we have salary data (even though raw data is not restored)
+          // This allows getProcessingStatus to return correct state
+          this.salaryData = [{ employeeId: 'restored' } as any]; // Placeholder
+        }
+        
+        if (currentSession.fileMetadata.performanceFile) {
+          // Mark that we have performance data
+          this.performanceData = [{ employeeId: 'restored' } as any]; // Placeholder
+        }
+      }
+      
+    } catch (error) {
+      console.error('❌ Failed to restore session data:', error);
+    }
   }
 
   // Clear all data (for new session)

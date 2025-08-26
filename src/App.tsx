@@ -1,11 +1,9 @@
 import { useState, useCallback, useEffect } from 'react';
 import { FileUpload } from './components/FileUpload';
 import { Dashboard } from './components/Dashboard';
-import { BackupManager } from './components/BackupManager';
 import { ProposalImporterComponent } from './components/ProposalImporter';
 import { DataProcessor } from './services/dataProcessor';
 import { DataStorageService } from './services/dataStorage';
-import { AutoBackupService, type BackupData } from './services/autoBackup';
 import { TempFieldStorageService } from './services/tempFieldStorage';
 import { CurrencyConverter } from './services/currencyConverter';
 import type { FileUploadResult, Employee } from './types/employee';
@@ -25,19 +23,6 @@ function App() {
   const [totalBudget, setTotalBudget] = useState<number>(0);
   const [budgetCurrency, setBudgetCurrency] = useState<string>('USD');
 
-  // Listen for temporary field changes and trigger backups
-  useEffect(() => {
-    const handleTempFieldChange = () => {
-      // Create backup when temporary fields change
-      AutoBackupService.scheduleBackup(processedEmployees, totalBudget, budgetCurrency);
-    };
-
-    window.addEventListener('tempFieldChanged', handleTempFieldChange);
-    
-    return () => {
-      window.removeEventListener('tempFieldChanged', handleTempFieldChange);
-    };
-  }, [processedEmployees, totalBudget, budgetCurrency]);
 
   // Initialize services and session recovery on app load
   useEffect(() => {
@@ -46,20 +31,16 @@ function App() {
         // Initialize currency converter for real-time rates
         CurrencyConverter.initializeForRealTime();
         
-        // Try to get existing employee data
-        const existingEmployees = await DataStorageService.getEmployees();
+        // Restore DataProcessor session data first
+        await DataProcessor.restoreSessionData();
         
-        if (existingEmployees.length > 0) {
+        // Get processed employees from DataProcessor
+        const restoredEmployees = DataProcessor.getProcessedEmployees();
+        
+        if (restoredEmployees.length > 0) {
 
           
-          // Convert EmployeeRecord to Employee format
-          const convertedEmployees: Employee[] = existingEmployees.map(emp => ({
-            ...emp,
-            firstName: emp.name.split(' ')[0] || '',
-            lastName: emp.name.split(' ').slice(1).join(' ') || ''
-          }));
-          
-          setProcessedEmployees(convertedEmployees);
+          setProcessedEmployees(restoredEmployees);
           
           // Restore any temporary field changes
           TempFieldStorageService.restoreTempChanges();
@@ -100,18 +81,6 @@ function App() {
           // Switch to dashboard view if we have data
           setCurrentView('dashboard');
           
-        } else {
-
-          
-          // Try to restore from backup if no session data
-          const backupData = AutoBackupService.restoreFromStorage();
-          if (backupData && backupData.employees.length > 0) {
-
-            setProcessedEmployees(backupData.employees);
-            setTotalBudget(backupData.budget.totalBudget);
-            setBudgetCurrency(backupData.budget.budgetCurrency);
-            setCurrentView('dashboard');
-          }
         }
         
       } catch (error) {
@@ -125,17 +94,6 @@ function App() {
     recoverSession();
   }, []);
 
-  // Handle backup restoration
-  const handleRestoreBackup = useCallback((backupData: BackupData) => {
-    setProcessedEmployees(backupData.employees);
-    setTotalBudget(backupData.budget.totalBudget);
-    setBudgetCurrency(backupData.budget.budgetCurrency);
-    
-    // Switch to dashboard view
-    setCurrentView('dashboard');
-    
-
-  }, []);
 
   // Handle successful file upload
   const handleFileUpload = useCallback(async (result: FileUploadResult) => {
@@ -152,9 +110,46 @@ function App() {
       const processResult = await DataProcessor.processEmployeeData();
       setProcessedEmployees(processResult.employees);
       
-      // Create backup after successful data processing
-      if (processResult.employees.length > 0) {
-        AutoBackupService.createBackup(processResult.employees, totalBudget, budgetCurrency);
+      // Update session metadata with file information
+      const currentSession = await DataStorageService.getCurrentSession();
+      const sessionId = currentSession?.sessionId || `session-${Date.now()}`;
+      
+      const sessionData = {
+        sessionId,
+        budget: currentSession?.budget || 0,
+        remainingBudget: currentSession?.remainingBudget || 0,
+        uploadTimestamp: currentSession?.uploadTimestamp || Date.now(),
+        lastModified: Date.now(),
+        hasPerformanceData: processResult.hasPerformanceData,
+        fileMetadata: {
+          ...currentSession?.fileMetadata,
+          ...(result.fileType === 'salary' && {
+            salaryFile: {
+              name: result.fileName,
+              size: new Blob([JSON.stringify(result.data)]).size, // Estimate file size
+              rowCount: result.rowCount,
+              uploadTime: Date.now(),
+            }
+          }),
+          ...(result.fileType === 'performance' && {
+            performanceFile: {
+              name: result.fileName,
+              size: new Blob([JSON.stringify(result.data)]).size, // Estimate file size
+              rowCount: result.rowCount,
+              uploadTime: Date.now(),
+            }
+          }),
+        },
+        processingOptions: {
+          convertCurrencies: true,
+          joinStrategy: 'email-first',
+        },
+      };
+
+      if (currentSession) {
+        await DataStorageService.updateSession(sessionData);
+      } else {
+        await DataStorageService.saveSession(sessionData);
       }
       
       // Auto-switch to dashboard view when we have data
@@ -169,7 +164,7 @@ function App() {
       console.error('❌ Data processing failed:', error);
       setError(`Data processing failed: ${error instanceof Error ? error.message : 'Unknown error'}`);
     }
-  }, [totalBudget, budgetCurrency]);
+  }, []);
 
   // Handle upload errors
   const handleUploadError = useCallback((errorMessage: string) => {
@@ -197,23 +192,17 @@ function App() {
           : emp
       );
       
-      // Create backup after updates
-      AutoBackupService.scheduleBackup(updatedEmployees, totalBudget, budgetCurrency);
-      
       return updatedEmployees;
     });
 
-  }, [totalBudget, budgetCurrency]);
+  }, []);
 
   // Handle budget changes
   const handleBudgetChange = useCallback((budget: number, currency: string) => {
     setTotalBudget(budget);
     setBudgetCurrency(currency);
-    
-    // Create backup with updated budget information
-    AutoBackupService.scheduleBackup(processedEmployees, budget, currency);
 
-  }, [processedEmployees]);
+  }, []);
 
   // Handle manager proposal imports
   const handleProposalsImported = useCallback((updatedEmployees: Employee[], result: ProposalImportResult) => {
@@ -221,9 +210,6 @@ function App() {
     
     // Update the processed employees with the merged proposals
     setProcessedEmployees(updatedEmployees);
-    
-    // Create backup after importing proposals
-    AutoBackupService.scheduleBackup(updatedEmployees, totalBudget, budgetCurrency);
     
     // Update storage
     DataStorageService.saveEmployees(updatedEmployees.map(emp => ({
@@ -249,11 +235,23 @@ function App() {
       hireDate: emp.hireDate,
       roleStartDate: emp.roleStartDate,
       lastRaiseDate: emp.lastRaiseDate,
+      departmentCode: emp.departmentCode,
+      jobTitle: emp.jobTitle,
+      managerId: emp.managerId,
+      managerName: emp.managerName,
+      futuretalent: emp.futuretalent,
+      movementReadiness: emp.movementReadiness,
+      proposedTalentActions: emp.proposedTalentActions,
+      salaryRangeSegment: emp.salaryRangeSegment,
+      belowRangeMinimum: emp.belowRangeMinimum,
+      managerFlag: emp.managerFlag,
+      teamLeadFlag: emp.teamLeadFlag,
+      managementLevel: emp.managementLevel,
     }))).catch(error => {
       console.error('❌ Failed to save updated employees:', error);
     });
 
-  }, [totalBudget, budgetCurrency]);
+  }, []);
 
   // Handle data reset
   const handleResetData = useCallback(async () => {
@@ -262,7 +260,6 @@ function App() {
       
       // Reset all services
       await DataStorageService.resetAllData();
-      AutoBackupService.resetAllBackups();
       TempFieldStorageService.clearAllTempChanges();
       
       // Reset component state
@@ -374,7 +371,7 @@ function App() {
               <ul>
                 <li>Delete all uploaded employee data</li>
                 <li>Clear budget information</li>
-                <li>Remove all backups and session data</li>
+                <li>Remove all session data</li>
                 <li>Return you to the upload screen</li>
               </ul>
               <p className="warning-text">
@@ -464,10 +461,6 @@ function App() {
               </div>
             )}
 
-            {/* Backup Manager */}
-            <div style={{ marginTop: '2rem' }}>
-              <BackupManager onRestoreBackup={handleRestoreBackup} />
-            </div>
 
             {/* Upload Summary */}
             {uploadedFiles.length > 0 && (

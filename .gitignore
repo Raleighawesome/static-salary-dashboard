@@ -1,3 +1,6 @@
+.gitignore
+.claude/
+.prettierrc
 node_modules/
 dist/
 public/backup/

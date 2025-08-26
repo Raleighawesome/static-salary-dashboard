@@ -25,6 +25,18 @@ export interface EmployeeRecord {
   hireDate?: string;
   roleStartDate?: string;
   lastRaiseDate?: string;
+  departmentCode?: string;
+  jobTitle?: string;
+  managerId?: string;
+  managerName?: string;
+  futuretalent?: string;
+  movementReadiness?: string;
+  proposedTalentActions?: string;
+  salaryRangeSegment?: string;
+  belowRangeMinimum?: string;
+  managerFlag?: string;
+  teamLeadFlag?: string;
+  managementLevel?: string;
 }
 
 export interface SessionData {
@@ -137,6 +149,17 @@ export class RaiseDashboardDB extends Dexie {
     // Define schema version 2 - Add caching and preferences
     this.version(2).stores({
       employees: '++id, employeeId, email, name, country, currency, baseSalary, comparatio, timeInRole, retentionRisk',
+      sessions: '++id, sessionId, budget, uploadTimestamp, lastModified',
+      policies: '++id, lastUpdated',
+      currencyRates: '++id, fromCurrency, toCurrency, [fromCurrency+toCurrency], timestamp, expiresAt',
+      fileCache: '++id, fileHash, fileName, fileType, createdAt, lastAccessed',
+      preferences: '++id',
+      auditLog: '++id, sessionId, employeeId, action, timestamp'
+    });
+
+    // Define schema version 3 - Add performance fields to employees
+    this.version(3).stores({
+      employees: '++id, employeeId, email, name, country, currency, baseSalary, comparatio, timeInRole, retentionRisk, jobTitle, departmentCode',
       sessions: '++id, sessionId, budget, uploadTimestamp, lastModified',
       policies: '++id, lastUpdated',
       currencyRates: '++id, fromCurrency, toCurrency, [fromCurrency+toCurrency], timestamp, expiresAt',

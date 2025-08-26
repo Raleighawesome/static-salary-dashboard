@@ -11,7 +11,6 @@ interface TempFieldChange {
 export class TempFieldStorageService {
   private static readonly TEMP_STORAGE_KEY = 'salary_dashboard_temp_changes';
   private static readonly MAX_TEMP_AGE = 5 * 60 * 1000; // 5 minutes
-  private static backupTimeout: NodeJS.Timeout | null = null;
 
   /**
    * Store a temporary field change
@@ -48,8 +47,6 @@ export class TempFieldStorageService {
       // Store updated changes
       localStorage.setItem(this.TEMP_STORAGE_KEY, JSON.stringify(changes));
       
-      // Schedule a backup to ensure these changes are captured
-      this.scheduleBackupForTempChanges();
       
     } catch (error) {
       console.error('❌ Failed to store temp change:', error);
@@ -149,11 +146,6 @@ export class TempFieldStorageService {
     try {
       localStorage.removeItem(this.TEMP_STORAGE_KEY);
       
-      // Clear any scheduled backup
-      if (this.backupTimeout) {
-        clearTimeout(this.backupTimeout);
-        this.backupTimeout = null;
-      }
     } catch (error) {
       console.error('❌ Failed to clear temp changes:', error);
     }
@@ -177,27 +169,6 @@ export class TempFieldStorageService {
     };
   }
 
-  /**
-   * Schedule a backup that includes temporary changes
-   */
-  private static scheduleBackupForTempChanges(): void {
-    // Clear existing timeout
-    if (this.backupTimeout) {
-      clearTimeout(this.backupTimeout);
-    }
-
-    // Schedule backup in 1 second to capture temp changes
-    this.backupTimeout = setTimeout(() => {
-      // This will be handled by the existing backup system
-      // We just need to make sure it's triggered
-      const event = new CustomEvent('tempFieldChanged', {
-        detail: { 
-          hasTempChanges: this.getTempChanges().length > 0 
-        }
-      });
-      window.dispatchEvent(event);
-    }, 1000);
-  }
 
   /**
    * Check if there are any unsaved changes
