@@ -17,7 +17,7 @@ interface MetricsCardsProps {
   budgetMetrics: BudgetMetrics;
   employeeData: any[];
   onEmployeeSelect?: (employee: any) => void;
-  onQuickFilter?: (filter: 'belowRange' | 'aboveRange' | 'below75' | 'below85NotBelow75' | 'above85' | 'seg1_24m') => void;
+  onQuickFilter?: (filter: 'below75' | 'below85NotBelow75' | 'above85' | 'seg1_24m') => void;
 }
 
 interface EmployeeListComponentProps {
@@ -106,79 +106,138 @@ const EmployeeListComponent: React.FC<EmployeeListComponentProps> = ({
   );
 };
 
-interface RangeBreachesCardProps {
-  additionalMetrics: any;
-  totalEmployees: number;
+interface TimeInSegment1CardProps {
   employeeData: any[];
   onEmployeeSelect?: (employee: any) => void;
-  onQuickFilter?: (filter: 'belowRange' | 'aboveRange') => void;
+  onQuickFilter?: (filter: 'seg1_24m') => void;
   styles: any;
 }
 
-const RangeBreachesCard: React.FC<RangeBreachesCardProps> = ({
-  additionalMetrics,
-  totalEmployees,
+const TimeInSegment1Card: React.FC<TimeInSegment1CardProps> = ({
   employeeData,
   onEmployeeSelect,
   onQuickFilter,
   styles
 }) => {
-  const belowRangeEmployees = employeeData.filter(emp => {
-    const base = typeof emp.baseSalary === 'number' ? emp.baseSalary : emp.baseSalaryUSD;
-    const min = emp.salaryGradeMin;
-    return typeof base === 'number' && typeof min === 'number' && base < min;
+  // Helper function to get performance badge classification
+  const getPerformanceBadge = (rating: string | number): { text: string; className: string } => {
+    if (!rating) return { text: 'N/A', className: 'noData' };
+    
+    // Handle text-based performance ratings from CSV
+    if (typeof rating === 'string') {
+      const ratingLower = rating.toLowerCase();
+      if (ratingLower.includes('high') || ratingLower.includes('excellent') || ratingLower.includes('impact')) {
+        return { text: rating, className: 'excellent' };
+      }
+      if (ratingLower.includes('successful') || ratingLower.includes('good') || ratingLower.includes('meets')) {
+        return { text: rating, className: 'good' };
+      }
+      if (ratingLower.includes('developing') || ratingLower.includes('fair') || ratingLower.includes('partial')) {
+        return { text: rating, className: 'fair' };
+      }
+      if (ratingLower.includes('evolving')) {
+        return { text: rating, className: 'poor' };
+      }
+      if (ratingLower.includes('poor') || ratingLower.includes('below') || ratingLower.includes('needs')) {
+        return { text: rating, className: 'poor' };
+      }
+      // Default for unknown text ratings
+      return { text: rating, className: 'good' };
+    }
+    
+    // Handle numeric ratings (legacy support)
+    const numRating = Number(rating);
+    if (numRating <= 0) return { text: 'N/A', className: 'noData' };
+    if (numRating >= 4.5) return { text: 'Excellent', className: 'excellent' };
+    if (numRating >= 4.0) return { text: 'Good', className: 'good' };
+    if (numRating >= 3.5) return { text: 'Fair', className: 'fair' };
+    if (numRating >= 3.0) return { text: 'Poor', className: 'poor' };
+    return { text: 'Critical', className: 'critical' };
+  };
+
+  // Filter employees using the same logic as Seg1 24m+ filter
+  const segment1Employees = employeeData.filter(emp => {
+    try {
+      // Enhanced data extraction with comprehensive field name fallbacks
+      const extractFieldValue = (fieldNames: string[], defaultValue: any = null) => {
+        for (const fieldName of fieldNames) {
+          const value = emp[fieldName];
+          if (value !== undefined && value !== null && value !== '') {
+            return value;
+          }
+        }
+        return defaultValue;
+      };
+
+      // Check for Segment 1
+      const seg = (emp.salaryRangeSegment || '').toString().toLowerCase();
+      const isSegment1 = seg === 'segment 1' || seg === '1' || seg.includes('segment 1');
+      
+      if (!isSegment1) return false;
+
+      // Calculate tenure information using EmployeeCalculations
+      const tenureInfo = EmployeeCalculations.calculateTenure(
+        extractFieldValue([
+          'Latest Hire Date', 'hireDate', 'hire_date', 'start_date',
+          'Hire Date', 'Start Date'
+        ]),
+        extractFieldValue([
+          'Job Entry Start Date', 'roleStartDate', 'role_start_date', 'current_role_start',
+          'Role Start Date', 'Current Role Start'
+        ]),
+        extractFieldValue([
+          'Last Increase Date', 'lastRaiseDate', 'last_raise_date', 'lastRaise',
+          'Last Raise Date'
+        ])
+      );
+
+      const timeInRoleMonths = tenureInfo?.timeInRoleMonths || 0;
+      
+      // Check for performance issues
+      const derivedRating = emp.performanceRating ||
+        emp['CALIBRATED VALUE: Overall Performance Rating'] ||
+        emp['calibrated value: overall performance rating'] ||
+        '';
+      const perfClass = getPerformanceBadge(derivedRating).className;
+      const hasPerformanceIssues = perfClass === 'poor' || perfClass === 'critical';
+      
+      return timeInRoleMonths > 24 && !hasPerformanceIssues;
+    } catch (error) {
+      console.error('Error filtering segment 1 employee:', emp?.name || 'unknown', error);
+      return false;
+    }
   });
 
-  const aboveRangeEmployees = employeeData.filter(emp => {
-    const base = typeof emp.baseSalary === 'number' ? emp.baseSalary : emp.baseSalaryUSD;
-    const max = emp.salaryGradeMax;
-    return typeof base === 'number' && typeof max === 'number' && base > max;
+  // Filter to only successful/high performers for the employee list
+  const highPerformingSegment1 = segment1Employees.filter(emp => {
+    const derivedRating = emp.performanceRating ||
+      emp['CALIBRATED VALUE: Overall Performance Rating'] ||
+      emp['calibrated value: overall performance rating'] ||
+      '';
+    const perfClass = getPerformanceBadge(derivedRating).className;
+    return perfClass === 'excellent' || perfClass === 'good';
   });
-
-  const allBreachEmployees = [...belowRangeEmployees, ...aboveRangeEmployees];
 
   return (
-    <div className={`${styles.metricCard} ${styles.rangeCard}`}>
+    <div className={`${styles.metricCard} ${styles.segment1Card}`}>
       <div className={styles.cardHeader}>
-        <div className={styles.cardIcon}>📏</div>
-        <div className={styles.cardTitle}>Range Breaches</div>
+        <div className={styles.cardIcon}>⏳</div>
+        <div className={styles.cardTitle}>Time in Segment 1</div>
       </div>
       <div className={styles.cardContent}>
-        <div className={styles.primaryMetric}>
+        <div 
+          className={`${styles.primaryMetric} ${styles.clickable}`}
+          onClick={() => onQuickFilter?.('seg1_24m')}
+          style={{ cursor: 'pointer' }}
+        >
           <div className={styles.metricValue}>
-            {additionalMetrics.rangeBreaches.belowRange + additionalMetrics.rangeBreaches.aboveRange}
+            {segment1Employees.length}
           </div>
-          <div className={styles.metricLabel}>Total Breaches</div>
+          <div className={styles.metricLabel}>Over 24 Months</div>
         </div>
-        <div className={styles.secondaryMetrics}>
-          <div
-            className={`${styles.secondaryMetric} ${styles.clickable}`}
-            onClick={() => onQuickFilter?.('belowRange')}
-          >
-            <span className={styles.secondaryLabel}>Below Min:</span>
-            <span className={styles.secondaryValue}>
-              {additionalMetrics.rangeBreaches.belowRange}{' '}
-              ({totalEmployees > 0
-                ? ((additionalMetrics.rangeBreaches.belowRange / totalEmployees) * 100).toFixed(1)
-                : '0.0'}%)
-            </span>
-          </div>
-          <div
-            className={`${styles.secondaryMetric} ${styles.clickable}`}
-            onClick={() => onQuickFilter?.('aboveRange')}
-          >
-            <span className={styles.secondaryLabel}>Above Max:</span>
-            <span className={styles.secondaryValue}>
-              {additionalMetrics.rangeBreaches.aboveRange}{' '}
-              ({totalEmployees > 0
-                ? ((additionalMetrics.rangeBreaches.aboveRange / totalEmployees) * 100).toFixed(1)
-                : '0.0'}%)
-            </span>
-          </div>
-        </div>
-        {allBreachEmployees.length > 0 && (
+        {highPerformingSegment1.length > 0 && (
           <EmployeeListComponent
-            employees={allBreachEmployees}
+            employees={highPerformingSegment1}
             styles={styles}
             onEmployeeSelect={onEmployeeSelect}
             maxVisible={4}
@@ -222,7 +281,7 @@ const RiskAssessmentCard: React.FC<RiskAssessmentCardProps> = ({
       </div>
       <div className={styles.cardContent}>
         <div 
-          className={styles.primaryMetric}
+          className={`${styles.primaryMetric} ${styles.clickable}`}
           onClick={() => onQuickFilter?.('below75')}
           style={{ cursor: 'pointer' }}
         >
@@ -275,17 +334,17 @@ const RaiseReviewNeededCard: React.FC<RaiseReviewNeededCardProps> = ({
     <div className={`${styles.metricCard} ${styles.raiseCard}`}>
       <div className={styles.cardHeader}>
         <div className={styles.cardIcon}>⏱️</div>
-        <div className={styles.cardTitle}>Raise Review Needed</div>
+        <div className={styles.cardTitle}>Merit Review Needed</div>
       </div>
       <div className={styles.cardContent}>
         <div className={styles.primaryMetric}>
-          <div className={styles.metricValue}>{additionalMetrics.overdueCount18}</div>
-          <div className={styles.metricLabel}>Over 18 Months</div>
+          <div className={styles.metricValue}>{additionalMetrics.overdueCount24}</div>
+          <div className={styles.metricLabel}>Over 24 Months</div>
         </div>
         <div className={styles.secondaryMetrics}>
           <div className={styles.secondaryMetric}>
-            <span className={styles.secondaryLabel}>Over 24 Months:</span>
-            <span className={styles.secondaryValue}>{additionalMetrics.overdueCount24}</span>
+            <span className={styles.secondaryLabel}>Over 18 Months:</span>
+            <span className={styles.secondaryValue}>{additionalMetrics.overdueCount18}</span>
           </div>
         </div>
         {overdueEmployees.length > 0 && (
@@ -395,20 +454,49 @@ export const MetricsCards: React.FC<MetricsCardsProps> = ({
         months: tenure.lastRaiseMonthsAgo ?? tenure.timeInRoleMonths,
       }));
 
-    // Salary range breaches
-    const { belowRange, aboveRange } = employeeData.reduce(
-      (acc, emp) => {
-        const base = typeof emp.baseSalary === 'number' ? emp.baseSalary : emp.baseSalaryUSD;
-        const min = emp.salaryGradeMin;
-        const max = emp.salaryGradeMax;
-        if (typeof base === 'number') {
-          if (typeof min === 'number' && base < min) acc.belowRange += 1;
-          if (typeof max === 'number' && base > max) acc.aboveRange += 1;
-        }
-        return acc;
-      },
-      { belowRange: 0, aboveRange: 0 }
-    );
+    // Segment 1 time analysis (replacing salary range breaches)
+    const segment1TimeData = employeeData.filter(emp => {
+      try {
+        // Helper to safely extract field values with fallbacks
+        const extractFieldValue = (fieldNames: string[], defaultValue: any = null) => {
+          for (const fieldName of fieldNames) {
+            const value = emp[fieldName];
+            if (value !== undefined && value !== null && value !== '') {
+              return value;
+            }
+          }
+          return defaultValue;
+        };
+
+        // Check for Segment 1
+        const seg = (emp.salaryRangeSegment || '').toString().toLowerCase();
+        const isSegment1 = seg === 'segment 1' || seg === '1' || seg.includes('segment 1');
+        
+        if (!isSegment1) return false;
+
+        // Calculate tenure information
+        const tenureInfo = EmployeeCalculations.calculateTenure(
+          extractFieldValue([
+            'Latest Hire Date', 'hireDate', 'hire_date', 'start_date',
+            'Hire Date', 'Start Date'
+          ]),
+          extractFieldValue([
+            'Job Entry Start Date', 'roleStartDate', 'role_start_date', 'current_role_start',
+            'Role Start Date', 'Current Role Start'
+          ]),
+          extractFieldValue([
+            'Last Increase Date', 'lastRaiseDate', 'last_raise_date', 'lastRaise',
+            'Last Raise Date'
+          ])
+        );
+
+        const timeInRoleMonths = tenureInfo?.timeInRoleMonths || 0;
+        return timeInRoleMonths > 24;
+      } catch (error) {
+        console.error('Error calculating segment 1 time data for:', emp?.name || 'unknown', error);
+        return false;
+      }
+    });
 
     return {
       avgPerformance,
@@ -420,7 +508,7 @@ export const MetricsCards: React.FC<MetricsCardsProps> = ({
       overdueCount18: overdueEmployees.length,
       overdueCount24: overdue24.length,
       overdueList,
-      rangeBreaches: { belowRange, aboveRange },
+      segment1TimeData,
     };
   }, [employeeData]);
 
@@ -430,23 +518,13 @@ export const MetricsCards: React.FC<MetricsCardsProps> = ({
       <div className={styles.cardsHeader}>
         <h3 className={styles.cardsTitle}>📊 Key Metrics</h3>
         <p className={styles.cardsSubtitle}>
-          Overview of your salary raise allocation and employee metrics
+          Metrics based on our merit increase guidelines
         </p>
       </div>
 
       <div className={styles.cardsGrid}>
 
-        {/* Range Breaches Card */}
-        <RangeBreachesCard 
-          additionalMetrics={additionalMetrics}
-          totalEmployees={totalEmployees}
-          employeeData={employeeData}
-          onEmployeeSelect={onEmployeeSelect}
-          onQuickFilter={onQuickFilter}
-          styles={styles}
-        />
-
-        {/* Risk Assessment Card */}
+        {/* Comparatio Assessment Card (formerly Risk Assessment) */}
         <RiskAssessmentCard 
           totalEmployees={totalEmployees}
           employeeData={employeeData}
@@ -459,6 +537,14 @@ export const MetricsCards: React.FC<MetricsCardsProps> = ({
         <RaiseReviewNeededCard 
           additionalMetrics={additionalMetrics}
           onEmployeeSelect={onEmployeeSelect}
+          styles={styles}
+        />
+
+        {/* Time in Segment 1 Card (formerly Range Breaches) */}
+        <TimeInSegment1Card 
+          employeeData={employeeData}
+          onEmployeeSelect={onEmployeeSelect}
+          onQuickFilter={onQuickFilter}
           styles={styles}
         />
 

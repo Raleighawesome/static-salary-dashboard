@@ -100,6 +100,10 @@
   background: linear-gradient(90deg, #6366f1, #4338ca);
 }
 
+.segment1Card::before {
+  background: linear-gradient(90deg, #9333ea, #7c3aed);
+}
+
 /* Card Header */
 .cardHeader {
   display: flex;
@@ -140,6 +144,17 @@
   background: #f8fafc;
   border-radius: 0.75rem;
   border: 1px solid #e2e8f0;
+  transition: all 0.2s ease;
+}
+
+.primaryMetric.clickable {
+  cursor: pointer;
+}
+
+.primaryMetric.clickable:hover {
+  background: #f1f5f9;
+  border-color: #cbd5e1;
+  transform: translateY(-1px);
 }
 
 .metricValue {
