@@ -222,8 +222,7 @@ function App() {
       baseSalaryUSD: emp.baseSalaryUSD,
       comparatio: emp.comparatio,
       timeInRole: emp.timeInRole,
-      performanceRating: typeof emp.performanceRating === 'string' ? 
-        parseFloat(emp.performanceRating) || undefined : emp.performanceRating,
+      performanceRating: emp.performanceRating,
       retentionRisk: emp.retentionRisk,
       proposedRaise: emp.proposedRaise,
       newSalary: emp.newSalary,
