@@ -472,9 +472,9 @@ export const EmployeeDetail: React.FC<EmployeeDetailProps> = ({
                     })()}
                   </span>
                 </div>
-                <div className={styles.comparatio}>
+                <div className={`${styles.comparatio} ${analysis.salaryAnalysis.comparatio > 0 && analysis.salaryAnalysis.comparatio < 76 ? styles.belowMinimum : ''}`}>
                   <span className={styles.label}>Comparatio:</span>
-                  <span className={styles.value}>
+                  <span className={`${styles.value} ${analysis.salaryAnalysis.comparatio > 0 && analysis.salaryAnalysis.comparatio < 76 ? styles.warning : ''}`}>
                     {analysis.salaryAnalysis.comparatio > 0 
                       ? EmployeeCalculations.formatPercentage(analysis.salaryAnalysis.comparatio)
                       : 'Not Available'
