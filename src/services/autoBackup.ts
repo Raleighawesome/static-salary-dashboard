@@ -203,23 +203,27 @@ export class AutoBackupService {
    * Load backup from public directory
    */
   static async loadPublicBackup(): Promise<BackupData | null> {
+    const publicBackupEnabled =
+      import.meta.env.DEV || import.meta.env.VITE_ENABLE_PUBLIC_BACKUP === 'true';
+    if (!publicBackupEnabled) {
+      console.warn('Public backup loading is disabled in production builds');
+      return null;
+    }
+
     try {
       const response = await fetch(this.BACKUP_FILENAME);
       if (!response.ok) {
-  
         return null;
       }
-      
+
       const backupData: BackupData = await response.json();
-      
+
       // Validate backup structure
       if (!this.validateBackupData(backupData)) {
         throw new Error('Invalid public backup file format');
       }
-      
-  
+
       return backupData;
-      
     } catch (error) {
       console.error('❌ Failed to load public backup:', error);
       return null;

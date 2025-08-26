@@ -106,22 +106,6 @@ export const BackupManager: React.FC<BackupManagerProps> = ({
     }
   }, []);
 
-  // Load from public backup
-  const handleLoadPublicBackup = useCallback(async () => {
-    try {
-      const backupData = await AutoBackupService.loadPublicBackup();
-      if (backupData) {
-        onRestoreBackup(backupData);
-        alert(`✅ Public backup loaded successfully!\n\n${backupData.employees.length} employees imported\nBudget: ${backupData.budget.budgetCurrency} ${backupData.budget.totalBudget.toLocaleString()}`);
-      } else {
-        alert('❌ No public backup file found or file is invalid');
-      }
-    } catch (error) {
-      const errorMessage = error instanceof Error ? error.message : 'Failed to load public backup';
-      alert(`❌ ${errorMessage}`);
-    }
-  }, [onRestoreBackup]);
-
   return (
     <div className={`${styles.backupManager} ${className || ''}`}>
       <div className={styles.backupHeader}>
@@ -177,14 +161,6 @@ export const BackupManager: React.FC<BackupManagerProps> = ({
               🔄 Restore from Storage
             </button>
           )}
-
-          <button
-            className={styles.importButton}
-            onClick={handleLoadPublicBackup}
-            title="Load backup from public directory"
-          >
-            📂 Load Public Backup
-          </button>
 
           <button
             className={styles.importButton}
