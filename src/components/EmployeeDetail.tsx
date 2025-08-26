@@ -868,7 +868,7 @@ export const EmployeeDetail: React.FC<EmployeeDetailProps> = ({
               )}
             </div>
 
-            {/* 3. Salary Grade Range Card */
+            {/* 3. Salary Grade Range Card */}
             <div className={styles.card}>
               <h3 className={styles.cardTitle}>📊 Salary Grade Range</h3>
               <div className={styles.salaryRange}>
