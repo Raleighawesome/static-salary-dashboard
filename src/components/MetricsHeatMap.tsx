@@ -333,8 +333,8 @@ export const MetricsHeatMap: React.FC<MetricsHeatMapProps> = ({
       return 'N/A';
     }
     
-    // For other metrics, values <= 0 are invalid
-    if (value <= 0) {
+    // For other metrics (not timeSinceLastRaise), values <= 0 are invalid
+    if (selectedMetric !== 'timeSinceLastRaise' && value <= 0) {
       return 'N/A';
     }
     
@@ -347,9 +347,11 @@ export const MetricsHeatMap: React.FC<MetricsHeatMapProps> = ({
       } else if (selectedMetric === 'timeInRole') {
         return `${Math.round(value)}mo`;
       } else if (selectedMetric === 'timeSinceLastRaise') {
-        // Special formatting: months if <= 25, years + months if > 25
+        // Special formatting: "Current month" for 0, months if <= 25, years + months if > 25
         const months = Math.round(value);
-        if (months <= 25) {
+        if (months === 0) {
+          return 'Current month';
+        } else if (months <= 25) {
           return `${months}mo`;
         } else {
           const years = Math.floor(months / 12);
@@ -545,7 +547,9 @@ export const MetricsHeatMap: React.FC<MetricsHeatMapProps> = ({
                         <span>{typeof employee.timeSinceLastRaise === 'number' && employee.timeSinceLastRaise >= 0 ? (() => {
                           // Use the special formatting logic for display
                           const months = Math.round(employee.timeSinceLastRaise);
-                          if (months <= 25) {
+                          if (months === 0) {
+                            return 'this month';
+                          } else if (months <= 25) {
                             return `${months}mo`;
                           } else {
                             const years = Math.floor(months / 12);
