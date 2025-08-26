@@ -663,7 +663,7 @@ export const EmployeeDetail: React.FC<EmployeeDetailProps> = ({
 
             {/* 4. Retention Risk Analysis Card */}
             <div className={styles.card}>
-              <h3 className={styles.cardTitle}>⚠️ Retention Risk Analysis (Experimental)</h3>
+              <h3 className={styles.cardTitle}>❗ Retention Risk Analysis (Experimental)</h3>
               <div className={styles.retentionRisk}>
                 <div className={styles.riskScore}>
                   <span className={styles.label}>Risk Level:</span>
@@ -826,7 +826,7 @@ export const EmployeeDetail: React.FC<EmployeeDetailProps> = ({
 
                 {adjustmentConsiderations.length > 0 && (
                   <div className={styles.considerations}>
-                    <h4 className={styles.considerationsTitle}>Merit increase guidance</h4>
+                    <h4 className={styles.considerationsTitle}>⚠️ Merit increase guidance</h4>
                     <ul className={styles.considerationsList}>
                       {adjustmentConsiderations.map((item, idx) => (
                         <li key={idx} className={`${styles.considerationItem} ${styles[item.severity]}`}>

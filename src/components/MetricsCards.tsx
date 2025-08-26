@@ -222,7 +222,7 @@ const TimeInSegment1Card: React.FC<TimeInSegment1CardProps> = ({
     <div className={`${styles.metricCard} ${styles.segment1Card}`}>
       <div className={styles.cardHeader}>
         <div className={styles.cardIcon}>⏳</div>
-        <div className={styles.cardTitle}>Time in Segment 1</div>
+        <div className={styles.cardTitle}>Time in Segment 1 (no performance issues)</div>
       </div>
       <div className={styles.cardContent}>
         <div 
