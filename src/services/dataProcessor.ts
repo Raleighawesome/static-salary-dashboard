@@ -77,6 +77,14 @@ export class DataProcessor {
     let joinReport: JoinResult['joinSummary'] | undefined;
 
     try {
+      // Trigger currency rate update during data import
+      console.log('🔄 Triggering currency rate update during data import...');
+      try {
+        await CurrencyConverter.updatePublicRatesFile();
+      } catch (error) {
+        console.warn('⚠️ Currency rate update failed during import:', error);
+        warnings.push('Currency rate update failed - using cached or fallback rates');
+      }
 
 
       // Initialize currency converter if needed

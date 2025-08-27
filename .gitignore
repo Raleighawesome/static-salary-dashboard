@@ -4,3 +4,4 @@
 node_modules/
 dist/
 public/backup/
+public/currency-rates.json

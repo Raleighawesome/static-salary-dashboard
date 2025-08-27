@@ -8,6 +8,7 @@ import { MetricsCards } from './MetricsCards';
 import EmployeeDetail from './EmployeeDetail';
 import PolicyViolationAlert from './PolicyViolationAlert';
 import { CSVExporter } from '../services/csvExporter';
+import { CurrencyConverter } from '../services/currencyConverter';
 import { PolicyValidator } from '../utils/policyValidation';
 import styles from './Dashboard.module.css';
 import { EmployeeCalculations } from '../utils/calculations';
@@ -54,6 +55,14 @@ export const Dashboard: React.FC<DashboardProps> = ({
   const [policyViolations, setPolicyViolations] = useState<PolicyViolation[]>([]);
   const [isExporting, setIsExporting] = useState(false);
   const [pendingAction, setPendingAction] = useState<'export' | 'validate' | null>(null);
+  
+  // Currency fallback warning state
+  const [showCurrencyWarning, setShowCurrencyWarning] = useState(false);
+  const [currencyWarningInfo, setCurrencyWarningInfo] = useState<{
+    isUsingFallback: boolean;
+    lastWarningTime: number;
+    warningAge: number;
+  } | null>(null);
 
   // Calculate current budget usage and metrics
   const budgetMetrics = useMemo(() => {
@@ -264,6 +273,23 @@ export const Dashboard: React.FC<DashboardProps> = ({
     }
   }, [employeeData, showPolicyAlert, recalculatePolicyViolations]);
 
+  // Check for currency fallback warning
+  useEffect(() => {
+    const checkCurrencyStatus = () => {
+      const warningInfo = CurrencyConverter.getFallbackWarningInfo();
+      setCurrencyWarningInfo(warningInfo);
+      setShowCurrencyWarning(warningInfo.isUsingFallback);
+    };
+
+    // Check immediately
+    checkCurrencyStatus();
+
+    // Check every 30 seconds for currency status updates
+    const interval = setInterval(checkCurrencyStatus, 30000);
+
+    return () => clearInterval(interval);
+  }, []);
+
   // Handle policy validation
   const handleValidatePolicies = useCallback(() => {
 
@@ -382,6 +408,27 @@ export const Dashboard: React.FC<DashboardProps> = ({
           </nav>
         </div>
       </div>
+
+      {/* Currency Fallback Warning */}
+      {showCurrencyWarning && currencyWarningInfo && (
+        <div className={styles.currencyWarning}>
+          <div className={styles.warningContent}>
+            <span className={styles.warningIcon}>⚠️</span>
+            <div className={styles.warningText}>
+              <strong>Currency Rate Warning:</strong> Unable to fetch live exchange rates. 
+              Using fallback rates (last updated: August 2025). 
+              Conversions may not reflect current market rates.
+            </div>
+            <button 
+              className={styles.dismissWarning}
+              onClick={() => setShowCurrencyWarning(false)}
+              title="Dismiss warning (will reappear if rates are still unavailable)"
+            >
+              ×
+            </button>
+          </div>
+        </div>
+      )}
 
       {/* Main Dashboard Content */}
       <div className={`${styles.dashboardContent} ${styles.fullWidth}`}>

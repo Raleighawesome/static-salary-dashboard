@@ -22,35 +22,44 @@ export interface CurrencyConverterOptions {
   timeoutMs?: number; // Default: 5000ms
 }
 
-// Static fallback rates (approximate rates as of 2024)
+// Static fallback rates (current as of August 26, 2025)
 const FALLBACK_RATES: Record<string, number> = {
   'USD': 1.0,
-  'EUR': 0.85,
-  'GBP': 0.73,
-  'JPY': 110.0,
-  'CAD': 1.25,
-  'AUD': 1.35,
-  'CHF': 0.88,
-  'CNY': 7.1,
-  'INR': 83.0,
-  'BRL': 5.2,
-  'MXN': 18.0,
-  'SGD': 1.32,
-  'HKD': 7.8,
-  'SEK': 10.5,
-  'NOK': 10.8,
-  'DKK': 6.9,
-  'PLN': 4.1,
-  'CZK': 23.0,
-  'HUF': 360.0,
-  'RUB': 75.0,
-  'ZAR': 18.5,
-  'KRW': 1300.0,
-  'THB': 35.0,
-  'MYR': 4.6,
-  'PHP': 56.0,
-  'IDR': 15500.0,
-  'VND': 24000.0,
+  'EUR': 0.858,
+  'GBP': 0.742,
+  'JPY': 147.64,
+  'CAD': 1.38,
+  'AUD': 1.54,
+  'CHF': 0.805,
+  'CNY': 7.16,
+  'INR': 87.61,
+  'BRL': 5.43,
+  'MXN': 18.66,
+  'SGD': 1.28,
+  'HKD': 7.81,
+  'SEK': 9.57,
+  'NOK': 10.12,
+  'DKK': 6.41,
+  'PLN': 3.66,
+  'CZK': 21.06,
+  'HUF': 340.73,
+  'RUB': 80.71,
+  'ZAR': 17.6,
+  'KRW': 1389.25,
+  'THB': 32.44,
+  'MYR': 4.21,
+  'PHP': 56.73,
+  'IDR': 16265.13,
+  'VND': 26206.36,
+  'ILS': 3.38,
+  'AED': 3.67,
+  'SAR': 3.75,
+  'EGP': 48.5,
+  'TRY': 41.02,
+  'PKR': 283.64,
+  'LKR': 301.9,
+  'TWD': 30.44,
+  'NZD': 1.71,
 };
 
 export class CurrencyConverter {
@@ -60,6 +69,8 @@ export class CurrencyConverter {
     fallbackToStaticRates: true,
     timeoutMs: 8000, // Longer timeout for better API success
   };
+  private static usingFallbackRates = false;
+  private static lastFallbackWarningTime = 0;
 
   // Initialize the converter with options for real-time priority
   public static initialize(options: CurrencyConverterOptions = {}): void {
@@ -128,7 +139,7 @@ export class CurrencyConverter {
     }
   }
 
-  // Get exchange rate between two currencies
+  // Get exchange rate between two currencies (4-tier priority system)
   public static async getExchangeRate(
     fromCurrency: string,
     toCurrency: string = 'USD'
@@ -137,13 +148,24 @@ export class CurrencyConverter {
     const to = toCurrency.toUpperCase();
     const cacheKey = `${from}-${to}`;
 
-    // Check cache first
+    // TIER 1: Check memory cache first (10 minutes)
     const cachedRate = await this.getCachedRate(cacheKey);
     if (cachedRate) {
       return cachedRate;
     }
 
-    // Try to fetch from API
+    // TIER 2: Check public file and trigger API update if stale (24+ hours)
+    try {
+      const publicRate = await this.getPublicFileRate(from, to);
+      if (publicRate) {
+        await this.cacheRate(cacheKey, publicRate);
+        return publicRate;
+      }
+    } catch (error) {
+      console.warn(`⚠️ Public file rate fetch failed for ${from} → ${to}:`, error);
+    }
+
+    // TIER 3: Try direct API call (fallback if public file failed)
     try {
       const apiRate = await this.fetchFromAPI(from, to);
       if (apiRate) {
@@ -151,14 +173,20 @@ export class CurrencyConverter {
         return apiRate;
       }
     } catch (error) {
-      console.warn(`⚠️  API fetch failed for ${from} → ${to}:`, error);
+      console.warn(`⚠️ Direct API fetch failed for ${from} → ${to}:`, error);
     }
 
-    // Fall back to static rates
+    // TIER 4: Fall back to static hardcoded rates
     if (this.options.fallbackToStaticRates) {
       const fallbackRate = this.getFallbackRate(from, to);
       if (fallbackRate) {
         await this.cacheRate(cacheKey, fallbackRate);
+        console.warn(`⚠️ Using hardcoded fallback rate for ${from} → ${to} (API unavailable)`);
+        
+        // Track that we're using fallback rates for UI warning
+        this.usingFallbackRates = true;
+        this.lastFallbackWarningTime = Date.now();
+        
         return fallbackRate;
       }
     }
@@ -177,6 +205,8 @@ export class CurrencyConverter {
       const result = await this.fetchFromExchangeRateAPI(fromCurrency, toCurrency);
       if (result) {
         console.log(`✅ Got live rate: ${result.rate} (${result.source})`);
+        // Reset fallback warning since API is working
+        this.resetFallbackWarning();
         return result;
       }
     } catch (error) {
@@ -296,6 +326,153 @@ export class CurrencyConverter {
     }
 
     return null;
+  }
+
+  // Fetch rates from public file
+  private static async getPublicFileRates(): Promise<{ rates: Record<string, number>; lastUpdated: number } | null> {
+    try {
+      const response = await fetch('/currency-rates.json');
+      if (!response.ok) {
+        console.warn('⚠️ Public currency rates file not found');
+        return null;
+      }
+      
+      const data = await response.json();
+      if (!data.rates || !data.lastUpdated) {
+        console.warn('⚠️ Invalid public currency rates file format');
+        return null;
+      }
+      
+      return {
+        rates: data.rates,
+        lastUpdated: data.lastUpdated
+      };
+    } catch (error) {
+      console.warn('⚠️ Failed to fetch public currency rates:', error);
+      return null;
+    }
+  }
+
+  // Check if public rates are fresh (< 24 hours old)
+  private static isPublicRatesFresh(lastUpdated: number): boolean {
+    const age = Date.now() - lastUpdated;
+    const maxAge = 24 * 60 * 60 * 1000; // 24 hours
+    return age < maxAge;
+  }
+
+  // Update public rates file with fresh API data
+  public static async updatePublicRatesFile(): Promise<boolean> {
+    try {
+      console.log('🔄 Updating public currency rates file...');
+      
+      // Fetch fresh rates from API
+      const apiRate = await this.fetchFromAPI('USD', 'EUR'); // Test call to validate API
+      if (!apiRate) {
+        console.warn('⚠️ API test call failed, cannot update public rates');
+        return false;
+      }
+
+      // Fetch full rates from API
+      const response = await fetch('https://api.exchangerate-api.com/v4/latest/USD', {
+        signal: AbortSignal.timeout(this.options.timeoutMs),
+      });
+
+      if (!response.ok) {
+        throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+      }
+
+      const apiData = await response.json();
+      
+      if (!apiData.rates) {
+        throw new Error('Invalid API response format');
+      }
+
+      // Create updated rates object
+      const updatedRates = {
+        lastUpdated: Date.now(),
+        source: 'exchangerate-api.com',
+        base: 'USD',
+        date: apiData.date || new Date().toISOString().split('T')[0],
+        rates: apiData.rates
+      };
+
+      // In a real application, this would need a backend API to write the file
+      // For now, we'll save to localStorage as a fallback and log the data
+      localStorage.setItem('currency-rates-cache', JSON.stringify(updatedRates));
+      
+      console.log('✅ Currency rates updated successfully');
+      console.log('📁 Note: Public file update requires backend API (saved to localStorage for now)');
+      
+      // Reset fallback warning since API update succeeded
+      this.resetFallbackWarning();
+      
+      return true;
+    } catch (error) {
+      console.error('❌ Failed to update public rates file:', error);
+      return false;
+    }
+  }
+
+  // Get rate from public file or trigger update if stale
+  private static async getPublicFileRate(
+    fromCurrency: string,
+    toCurrency: string
+  ): Promise<ExchangeRate | null> {
+    try {
+      // First check localStorage cache (fallback for file writing limitation)
+      const localCache = localStorage.getItem('currency-rates-cache');
+      let publicData = null;
+      
+      if (localCache) {
+        try {
+          const cachedData = JSON.parse(localCache);
+          if (this.isPublicRatesFresh(cachedData.lastUpdated)) {
+            publicData = cachedData;
+            console.log(`📁 Using localStorage cached rates (${Math.round((Date.now() - cachedData.lastUpdated) / (1000 * 60 * 60))}h old)`);
+          }
+        } catch (e) {
+          console.warn('⚠️ Invalid localStorage currency cache');
+        }
+      }
+      
+      // If no fresh local cache, try public file
+      if (!publicData) {
+        publicData = await this.getPublicFileRates();
+        
+        if (publicData && !this.isPublicRatesFresh(publicData.lastUpdated)) {
+          console.log(`🕒 Public rates are stale (${Math.round((Date.now() - publicData.lastUpdated) / (1000 * 60 * 60))}h old), updating...`);
+          
+          // Trigger update but don't wait for it - use stale data for now
+          this.updatePublicRatesFile().catch(err => 
+            console.warn('⚠️ Background rate update failed:', err)
+          );
+        }
+      }
+      
+      if (!publicData || !publicData.rates) {
+        return null;
+      }
+      
+      // Calculate rate from public data
+      const fromRate = publicData.rates[fromCurrency] || publicData.rates[fromCurrency.toUpperCase()];
+      const toRate = publicData.rates[toCurrency] || publicData.rates[toCurrency.toUpperCase()];
+      
+      if (fromRate && toRate) {
+        const rate = toRate / fromRate;
+        return {
+          fromCurrency,
+          toCurrency,
+          rate,
+          timestamp: publicData.lastUpdated,
+          source: 'cache',
+        };
+      }
+      
+      return null;
+    } catch (error) {
+      console.warn('⚠️ Error accessing public file rates:', error);
+      return null;
+    }
   }
 
   // Cache an exchange rate (both memory and IndexedDB)
@@ -493,5 +670,29 @@ export class CurrencyConverter {
     // For now, return empty array
     console.warn('📈 Rate trend data not available - would require historical API');
     return [];
+  }
+
+  // Check if currently using fallback rates (for UI warnings)
+  public static isUsingFallbackRates(): boolean {
+    return this.usingFallbackRates;
+  }
+
+  // Get fallback warning info for UI display
+  public static getFallbackWarningInfo(): {
+    isUsingFallback: boolean;
+    lastWarningTime: number;
+    warningAge: number;
+  } {
+    return {
+      isUsingFallback: this.usingFallbackRates,
+      lastWarningTime: this.lastFallbackWarningTime,
+      warningAge: this.lastFallbackWarningTime > 0 ? Date.now() - this.lastFallbackWarningTime : 0,
+    };
+  }
+
+  // Reset fallback warning status (call when API becomes available again)
+  public static resetFallbackWarning(): void {
+    this.usingFallbackRates = false;
+    this.lastFallbackWarningTime = 0;
   }
 } 

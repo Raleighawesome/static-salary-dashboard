@@ -13,7 +13,7 @@ export interface EmployeeRecord {
   baseSalaryUSD: number; // Converted to USD for comparison
   comparatio: number;
   timeInRole: number; // months
-  performanceRating?: number | string;
+  performanceRating?: string | number;
   retentionRisk: number;
   proposedRaise: number;
   newSalary: number;
