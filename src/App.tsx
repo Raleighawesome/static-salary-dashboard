@@ -412,19 +412,19 @@ function App() {
           <div className="upload-view">
             <div className="view-header">
               <h2>📁 Upload Employee Data</h2>
-              <p>Upload your salary and performance files to get started. (Find them via the Workday Search bar)</p>
+              <p>Upload your salary and performance files to get started. (Find them in Workday)</p>
             </div>
 
             {/* Workday Instructions */}
             <div className="workday-instructions">
               <h3>📋 Required Workday Reports</h3>
-              <p>Please download these two spreadsheets from Workday. (Search for them </p>
+              <p>Please download these two spreadsheets from Workday. (Search for them in Workday, or use the links below)</p>
               
               <div className="instructions-list">
                 <div className="instruction-item">
                   <div className="instruction-number">1</div>
                   <div className="instruction-content">
-                    <h4>RH Talent Assessment Calibration Audit Report</h4>
+                    <h4><a href="https://wd5.myworkday.com/redhat/d/search.htmld?q=RH+Talent+Assessment+Calibration+Audit+Report&state=searchCategory-all%3Adefault" target="_blank" rel="noopener noreferrer">RH Talent Assessment Calibration Audit Report</a></h4>
                     <p>Select <strong>"post calibration"</strong> (or <strong>"during calibration"</strong> if in a current calibration cycle)</p>
                   </div>
                 </div>
@@ -432,7 +432,7 @@ function App() {
                 <div className="instruction-item">
                   <div className="instruction-number">2</div>
                   <div className="instruction-content">
-                    <h4>RH Compensation Report w/ Hierarchy - Manager</h4>
+                    <h4><a href="https://wd5.myworkday.com/redhat/d/search.htmld?q=RH+Compensation+Report+w%2FHierarchy+-+Manager&state=searchCategory-all%3Adefault" target="_blank" rel="noopener noreferrer">RH Compensation Report w/ Hierarchy - Manager</a></h4>
                     <p>Make sure to <strong>uncheck "Direct Reports Only"</strong> if you want your entire organization</p>
                   </div>
                 </div>
