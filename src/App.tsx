@@ -412,13 +412,13 @@ function App() {
           <div className="upload-view">
             <div className="view-header">
               <h2>📁 Upload Employee Data</h2>
-              <p>Upload your salary and performance files to get started</p>
+              <p>Upload your salary and performance files to get started. (Find them via the Workday Search bar)</p>
             </div>
 
             {/* Workday Instructions */}
             <div className="workday-instructions">
               <h3>📋 Required Workday Reports</h3>
-              <p>Before uploading, please download these two spreadsheets from Workday:</p>
+              <p>Please download these two spreadsheets from Workday. (Search for them </p>
               
               <div className="instructions-list">
                 <div className="instruction-item">
@@ -440,7 +440,7 @@ function App() {
               
               <div className="export-instruction">
                 <span className="export-icon">📤</span>
-                <p><strong>After each report generates:</strong> Click the red <strong>"export to excel"</strong> image in the top right corner</p>
+                <p><strong>After each report generates:</strong> Click the red <strong>"export to excel"</strong> button in the top right corner</p>
               </div>
             </div>
             
