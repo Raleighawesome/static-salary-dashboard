@@ -910,7 +910,7 @@ export const EmployeeDetail: React.FC<EmployeeDetailProps> = ({
 
             {/* 3. AI Recommendation Card */}
             <div className={styles.card}>
-              <h3 className={styles.cardTitle}>🤖 AI Recommendation (Experimental)</h3>
+              <h3 className={styles.cardTitle}>✨ Recommendation (Experimental)</h3>
               <div className={styles.recommendation}>
                 <div className={styles.recommendedRaise}>
                   <span className={styles.label}>Recommended Raise:</span>
@@ -973,7 +973,7 @@ export const EmployeeDetail: React.FC<EmployeeDetailProps> = ({
               onClick={handleApplyAIRecommendation}
               disabled={!analysis.raiseRecommendation.recommendedAmount || analysis.raiseRecommendation.recommendedAmount <= 0 || aiRecommendationApplied}
               title={aiRecommendationApplied 
-                ? 'AI Recommendation Applied Successfully!'
+                ? 'Recommendation Applied Successfully!'
                 : analysis.raiseRecommendation.recommendedAmount > 0 
                   ? (() => {
                       const recommendedAmountUSD = analysis.raiseRecommendation.recommendedAmount;
@@ -997,7 +997,7 @@ export const EmployeeDetail: React.FC<EmployeeDetailProps> = ({
               {aiRecommendationApplied ? (
                 <>✅ Applied Successfully</>
               ) : (
-                <>🤖 Apply AI Recommendation</>
+                <>✨ Apply Recommendation</>
               )}
             </button>
             <button className={styles.closeBtn} onClick={onClose}>
