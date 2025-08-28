@@ -857,6 +857,9 @@ export const EmployeeTable: React.FC<EmployeeTableProps> = ({
                         title="Click to view employee details"
                       >
                         {employee.name || 'Unknown'}
+                        {employee.timeType === 'Part time' && (
+                          <span className={styles.partTimeIndicator}> (Part Time)</span>
+                        )}
                         {considerations.length > 0 && (
                           <span 
                             className={styles.considerationIndicator} 

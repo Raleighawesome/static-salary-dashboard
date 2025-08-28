@@ -267,6 +267,12 @@
   font-size: 0.875rem;
 }
 
+.partTimeIndicator {
+  color: #f97316;
+  font-weight: 500;
+  font-size: 0.75rem;
+}
+
 .clickableName {
   cursor: pointer;
   transition: all 0.2s ease;
@@ -865,6 +871,10 @@
   
   .employeeName {
     font-size: 0.8rem;
+  }
+  
+  .partTimeIndicator {
+    font-size: 0.7rem;
   }
   
   .employeeId {
