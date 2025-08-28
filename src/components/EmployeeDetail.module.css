@@ -176,6 +176,24 @@
   border-bottom: none;
 }
 
+/* Part Time Status Highlighting */
+.partTimeStatus {
+  background: rgba(255, 165, 0, 0.1);
+  border-left: 4px solid #ff8c00;
+  padding: 12px 16px;
+  margin: 8px 0;
+  border-radius: 8px;
+}
+
+.partTimeHighlight {
+  background: linear-gradient(135deg, #ff8c00, #ffa500);
+  color: white;
+  padding: 4px 12px;
+  border-radius: 16px;
+  font-weight: 600;
+  text-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
+}
+
 /* Span of Control Styles */
 .spanOfControlGroup {
   background: #f4faff;

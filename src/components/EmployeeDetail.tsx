@@ -5,6 +5,30 @@ import { SpanOfControlCalculator } from '../utils/spanOfControl';
 import type { Employee } from '../types/employee';
 import styles from './EmployeeDetail.module.css';
 
+// Helper functions are defined outside the component to avoid any temporal
+// dead-zone issues and to keep them pure and reusable. These functions do not
+// depend on component state/props other than the provided employee object.
+function getEffectiveSalary(emp: any) {
+  // For part-time employees, use the partTimeSalary as the effective salary.
+  if (emp.timeType === 'Part time' && emp.partTimeSalary) {
+    return emp.partTimeSalary;
+  }
+  // For full-time (or missing) time types, fall back to baseSalary.
+  return emp.baseSalary || 0;
+}
+
+function computeEffectiveSalaryUSD(emp: any) {
+  // For part-time employees, convert partTimeSalary to USD when possible.
+  if (emp.timeType === 'Part time' && emp.partTimeSalary) {
+    if (emp.currency !== 'USD' && emp.baseSalary && emp.baseSalaryUSD && emp.baseSalary > 0) {
+      return emp.partTimeSalary * (emp.baseSalaryUSD / emp.baseSalary);
+    }
+    return emp.partTimeSalary;
+  }
+  // For full-time (or missing) time types, prefer baseSalaryUSD and fall back to baseSalary.
+  return emp.baseSalaryUSD || emp.baseSalary || 0;
+}
+
 interface EmployeeDetailProps {
   employee: any;
   allEmployees: Employee[]; // Full employee list for span of control calculation
@@ -24,6 +48,11 @@ export const EmployeeDetail: React.FC<EmployeeDetailProps> = ({
   totalBudget,
   currentBudgetUsage,
 }) => {
+  // Console log employee object for debugging
+  console.log('🔍 EmployeeDetail component rendered!');
+  console.log('👤 Employee Detail View - Employee Object:', employee);
+  console.log('📋 Employee properties:', Object.keys(employee || {}));
+
   // Validate employee data
   if (!employee) {
     console.error('❌ EmployeeDetail: No employee data provided');
@@ -45,9 +74,13 @@ export const EmployeeDetail: React.FC<EmployeeDetailProps> = ({
   // State for inline editing
   const [isEditingRaise, setIsEditingRaise] = useState(false);
   const [tempProposedRaisePercent, setTempProposedRaisePercent] = useState(() => {
-    // Calculate initial percentage from existing currency amount
-    const baseSalaryUSD = employee.baseSalaryUSD || 0;
-    return baseSalaryUSD > 0 ? ((employee.proposedRaise || 0) / baseSalaryUSD) * 100 : 0;
+    // Calculate initial percentage from existing currency amount using effective salary
+    const effectiveSalaryUSD = employee.timeType === 'Part time' && employee.partTimeSalary
+      ? (employee.currency !== 'USD' && employee.baseSalary && employee.baseSalaryUSD && employee.baseSalary > 0
+          ? employee.partTimeSalary * (employee.baseSalaryUSD / employee.baseSalary)
+          : employee.partTimeSalary)
+      : (employee.baseSalaryUSD || employee.baseSalary || 0);
+    return effectiveSalaryUSD > 0 ? ((employee.proposedRaise || 0) / effectiveSalaryUSD) * 100 : 0;
   });
   const [proposedRaise, setProposedRaise] = useState(employee.proposedRaise || 0);
   const [aiRecommendationApplied, setAiRecommendationApplied] = useState(false);
@@ -80,6 +113,9 @@ export const EmployeeDetail: React.FC<EmployeeDetailProps> = ({
     };
   }, []);
 
+  // Note: getEffectiveSalary and getEffectiveSalaryUSD are defined at module scope
+  // above. Keeping call sites identical for clarity and minimal change.
+
   // Calculate comprehensive employee analysis
   const analysis = useMemo(() => {
     // Enhanced data extraction with comprehensive field name fallbacks
@@ -94,16 +130,12 @@ export const EmployeeDetail: React.FC<EmployeeDetailProps> = ({
     };
 
     // Extract salary information with proper separation of local vs USD amounts
-    const baseSalaryUSD = extractFieldValue([
-      'baseSalaryUSD', 'base_salary_usd', 'salary_usd', 'annual_salary_usd',
-      'Base Salary USD', 'Annual Salary USD', 'USD Salary'
-    ], 0);
-
-    const baseSalary = extractFieldValue([
-      'baseSalary', 'base_salary', 'salary', 'annual_salary',
-      'Base Salary', 'Annual Salary', 'Base Pay All Countries', 'Total Base Pay',
-      'Annual Calculated Base Pay All Countries'
-    ], baseSalaryUSD); // Fallback to USD if local currency not available
+    // Use effective salary based on timeType
+    const effectiveSalaryUSD = computeEffectiveSalaryUSD(employee);
+    const effectiveSalary = getEffectiveSalary(employee);
+    
+    const baseSalaryUSD = effectiveSalaryUSD;
+    const baseSalary = effectiveSalary;
 
     const salaryGradeMin = extractFieldValue([
       'salaryGradeMin', 'salary_grade_min', 'grade_min', 'min_salary',
@@ -211,25 +243,25 @@ export const EmployeeDetail: React.FC<EmployeeDetailProps> = ({
   }, []);
 
   const handleProposedRaiseSave = useCallback(() => {
-    // Convert percentage to currency amount
-    const baseSalaryUSD = employee.baseSalaryUSD || 0;
-    const currencyAmount = baseSalaryUSD * (tempProposedRaisePercent / 100);
+    // Convert percentage to currency amount using effective salary
+    const effectiveSalaryUSD = computeEffectiveSalaryUSD(employee);
+    const currencyAmount = effectiveSalaryUSD * (tempProposedRaisePercent / 100);
 
     setProposedRaise(currencyAmount);
     onEmployeeUpdate(employee.employeeId || employee.id, { proposedRaise: currencyAmount });
     // Clear temporary storage since the change has been saved
     TempFieldStorageService.removeTempChange(employee.employeeId || employee.id, 'proposedRaise');
     setIsEditingRaise(false);
-  }, [employee.employeeId, employee.id, tempProposedRaisePercent, employee.baseSalaryUSD, onEmployeeUpdate]);
+  }, [employee.employeeId, employee.id, tempProposedRaisePercent, onEmployeeUpdate]);
 
   const handleProposedRaiseCancel = useCallback(() => {
-    // Reset percentage to match current currency amount
-    const baseSalaryUSD = employee.baseSalaryUSD || 0;
-    setTempProposedRaisePercent(baseSalaryUSD > 0 ? (proposedRaise / baseSalaryUSD) * 100 : 0);
+    // Reset percentage to match current currency amount using effective salary
+    const effectiveSalaryUSD = computeEffectiveSalaryUSD(employee);
+    setTempProposedRaisePercent(effectiveSalaryUSD > 0 ? (proposedRaise / effectiveSalaryUSD) * 100 : 0);
     // Clear temporary storage since changes are being cancelled
     TempFieldStorageService.removeTempChange(employee.employeeId || employee.id, 'proposedRaise');
     setIsEditingRaise(false);
-  }, [proposedRaise, employee.baseSalaryUSD, employee.employeeId, employee.id]);
+  }, [proposedRaise, employee.employeeId, employee.id]);
 
   // Handle applying AI recommendation
   const handleApplyAIRecommendation = useCallback(() => {
@@ -441,28 +473,30 @@ export const EmployeeDetail: React.FC<EmployeeDetailProps> = ({
               <h3 className={styles.cardTitle}>💰 Current Compensation</h3>
               <div className={styles.salaryInfo}>
                 <div className={styles.currentSalary}>
-                  <span className={styles.label}>Base Salary:</span>
+                  <span className={styles.label}>
+                    {employee.timeType === 'Part time' ? 'Salary:' : 'Base Salary:'}
+                  </span>
                   <span className={styles.value}>
                     {(() => {
-                      // Use the properly converted USD value for display
-                      const salaryUSD = employee.baseSalaryUSD || 0;
+                      // Use effective salary based on timeType
+                      const effectiveSalaryUSD = computeEffectiveSalaryUSD(employee);
+                      const effectiveSalary = getEffectiveSalary(employee);
                       const originalCurrency = employee.currency || 'USD';
-                      const originalSalary = employee.baseSalary || 0;
                       
-                      if (salaryUSD <= 0) {
+                      if (effectiveSalaryUSD <= 0) {
                         return 'Not Available';
                       }
                       
                       // Always show USD first
-                      const usdDisplay = formatCurrencyDisplay(salaryUSD, 'USD');
+                      const usdDisplay = formatCurrencyDisplay(effectiveSalaryUSD, 'USD');
                       
-                      // For non-USD employees, always show original currency in parentheses
-                      if (originalCurrency !== 'USD' && originalSalary > 0) {
+                      // For non-USD employees, show original currency in parentheses
+                      if (originalCurrency !== 'USD' && effectiveSalary > 0) {
                         return (
                           <>
                             {usdDisplay}
                             <div className={styles.originalCurrency}>
-                              ({formatCurrencyDisplay(originalSalary, originalCurrency)})
+                              ({formatCurrencyDisplay(effectiveSalary, originalCurrency)})
                             </div>
                           </>
                         );
@@ -569,6 +603,16 @@ export const EmployeeDetail: React.FC<EmployeeDetailProps> = ({
             <div className={styles.card}>
               <h3 className={styles.cardTitle}>🕒 Tenure & Experience</h3>
               <div className={styles.tenureInfo}>
+                {/* Status for Part Time employees - highlighted */}
+                {employee.timeType === 'Part time' && (
+                  <div className={`${styles.tenureDetail} ${styles.partTimeStatus}`}>
+                    <span className={styles.label}>Status:</span>
+                    <span className={`${styles.value} ${styles.partTimeHighlight}`}>
+                      Part Time
+                    </span>
+                  </div>
+                )}
+                
                 {/* 1. Role Start Date - Always first */}
                 <div className={styles.tenureDetail}>
                   <span className={styles.label}>Role Start Date:</span>
@@ -724,9 +768,9 @@ export const EmployeeDetail: React.FC<EmployeeDetailProps> = ({
                           const newPercentValue = rawValue === '' ? 0 : Number(rawValue);
                           setTempProposedRaisePercent(newPercentValue);
 
-                          // Convert to currency for temporary storage
-                          const baseSalaryUSD = employee.baseSalaryUSD || 0;
-                          const currencyValue = baseSalaryUSD * (newPercentValue / 100);
+                          // Convert to currency for temporary storage using effective salary
+                          const effectiveSalaryUSD = computeEffectiveSalaryUSD(employee);
+                          const currencyValue = effectiveSalaryUSD * (newPercentValue / 100);
 
                           // Store in temporary storage for persistence
                           TempFieldStorageService.storeTempChange(
@@ -752,8 +796,8 @@ export const EmployeeDetail: React.FC<EmployeeDetailProps> = ({
                     <div className={styles.displayValue} onClick={handleProposedRaiseEdit}>
                       <span className={styles.value}>
                         {(() => {
-                          const baseSalaryUSD = employee.baseSalaryUSD || 0;
-                          const percentValue = baseSalaryUSD > 0 ? (proposedRaise / baseSalaryUSD) * 100 : 0;
+                          const effectiveSalaryUSD = computeEffectiveSalaryUSD(employee);
+                          const percentValue = effectiveSalaryUSD > 0 ? (proposedRaise / effectiveSalaryUSD) * 100 : 0;
                           return percentValue > 0 ? `${percentValue.toFixed(1)}%` : '0%';
                         })()}
                         <span className={styles.currencyEquivalent}>

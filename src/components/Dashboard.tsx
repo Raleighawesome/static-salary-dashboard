@@ -181,6 +181,12 @@ export const Dashboard: React.FC<DashboardProps> = ({
 
   // Handle employee selection for details view
   const handleEmployeeSelect = useCallback((employee: any) => {
+    console.log('🎯 handleEmployeeSelect called with:', employee);
+    console.log('🔍 timeType in selected employee:', employee.timeType);
+    console.log('💰 partTimeSalary in selected employee:', employee.partTimeSalary);
+    console.log('📋 All employee keys:', Object.keys(employee));
+    console.log('🔍 employeeData length:', employeeData.length);
+    console.log('📊 Sample employee from employeeData:', employeeData[0]);
     
     // Check if this is a limited EmployeeMetric object from the heat map
     // (it will only have id, name, comparatio, etc. but not full employee data)
@@ -195,7 +201,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
       );
       
       if (fullEmployee) {
-  
+        console.log('✅ Found full employee data, setting selectedEmployee to:', fullEmployee);
         setSelectedEmployee(fullEmployee);
       } else {
         console.warn('⚠️ Could not find full employee data for:', employee.name);
@@ -204,6 +210,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
       }
     } else {
       // This is already a full employee object (from employee table)
+      console.log('✅ Setting selectedEmployee to full employee object:', employee);
       setSelectedEmployee(employee);
     }
   }, [employeeData]);

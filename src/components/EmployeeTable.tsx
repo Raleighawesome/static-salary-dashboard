@@ -5,6 +5,66 @@ import { PolicyValidator } from '../utils/policyValidation';
 import { TempFieldStorageService } from '../services/tempFieldStorage';
 import { EmployeeCalculations } from '../utils/calculations';
 
+// Helper functions for effective salary calculation
+function getEffectiveSalary(emp: any) {
+  if (emp.timeType === 'Part time' && emp.partTimeSalary) {
+    return emp.partTimeSalary;
+  }
+  return emp.baseSalary || 0;
+}
+
+function computeEffectiveSalaryUSD(emp: any) {
+  if (emp.timeType === 'Part time' && emp.partTimeSalary) {
+    if (emp.currency !== 'USD' && emp.baseSalary && emp.baseSalaryUSD && emp.baseSalary > 0) {
+      return emp.partTimeSalary * (emp.baseSalaryUSD / emp.baseSalary);
+    }
+    return emp.partTimeSalary;
+  }
+  return emp.baseSalaryUSD || emp.baseSalary || 0;
+}
+
+// Compute comparatio using original currency effective salary and salary grade midpoint.
+// This mirrors the logic used in EmployeeDetail to keep values consistent for PT vs FT.
+function computeComparatioForDisplay(emp: any): number {
+  const currentSalaryOriginal = getEffectiveSalary(emp);
+  const salaryGradeMid = emp.salaryGradeMid ||
+                         emp['salary_grade_mid'] ||
+                         emp['mid_salary'] ||
+                         emp['grade_mid'] ||
+                         emp['Mid Pay Grade Value'] ||
+                         emp['Salary Grade Mid'] ||
+                         0;
+  if (currentSalaryOriginal > 0 && salaryGradeMid > 0) {
+    return Math.round((currentSalaryOriginal / salaryGradeMid) * 100);
+  }
+  return 0;
+}
+
+// Compute real-time raise-derived values from the current employee data.
+// Uses USD for consistency; converts part-time correctly via computeEffectiveSalaryUSD.
+function computeRealTimeRaiseValues(emp: any): { newSalary: number; percentChange: number; newComparatio: number } {
+  const currentSalaryUSD = computeEffectiveSalaryUSD(emp);
+  const proposedRaise = emp.proposedRaise || 0; // stored in USD
+
+  const newSalaryUSD = PolicyValidator.calculateNewSalary(currentSalaryUSD, proposedRaise);
+  const percentChange = PolicyValidator.calculateRaisePercent(currentSalaryUSD, proposedRaise);
+
+  // Calculate new comparatio using ORIGINAL currency (not USD)
+  const currentSalaryOriginal = getEffectiveSalary(emp);
+  const salaryGradeMid = emp.salaryGradeMid || 0;
+  let newComparatio = 0;
+  if (proposedRaise > 0 && salaryGradeMid > 0 && currentSalaryOriginal > 0) {
+    // Convert USD raise amount to original currency using implied FX from base vs baseUSD
+    const effectiveSalaryUSD = currentSalaryUSD || 1;
+    const currencyConversionRate = currentSalaryOriginal / effectiveSalaryUSD;
+    const proposedRaiseOriginalCurrency = proposedRaise * currencyConversionRate;
+    const newSalaryOriginal = currentSalaryOriginal + proposedRaiseOriginalCurrency;
+    newComparatio = Math.round((newSalaryOriginal / salaryGradeMid) * 100);
+  }
+
+  return { newSalary: newSalaryUSD, percentChange, newComparatio };
+}
+
 interface EmployeeTableProps {
   employeeData: any[];
   onEmployeeSelect: (employee: any) => void;
@@ -201,7 +261,7 @@ export const EmployeeTable: React.FC<EmployeeTableProps> = ({
     setEditingEmployeeId(employeeId);
     // Convert dollar amount to percentage for editing
     const employee = employeeData.find(emp => emp.employeeId === employeeId);
-    const currentSalary = employee?.baseSalaryUSD || employee?.baseSalary || 0;
+    const currentSalary = employee ? computeEffectiveSalaryUSD(employee) : 0;
     const currentRaisePercent = currentSalary > 0 ? (currentRaiseAmount / currentSalary) * 100 : 0;
     
     setTempRaiseValues({ 
@@ -263,7 +323,7 @@ export const EmployeeTable: React.FC<EmployeeTableProps> = ({
     const newRaisePercent = parseFloat(newRaisePercentStr) || 0;
     
     // Convert percentage to dollar amount
-    const currentSalary = employee.baseSalaryUSD || employee.baseSalary || 0;
+    const currentSalary = computeEffectiveSalaryUSD(employee);
     const newRaiseAmount = (newRaisePercent / 100) * currentSalary;
     
     // Calculate updated values
@@ -407,8 +467,8 @@ export const EmployeeTable: React.FC<EmployeeTableProps> = ({
         ])
       );
 
-      // Current comparatio
-      const currentComparatio = employee.comparatio || 0;
+      // Current comparatio - compute using effective salary logic for PT/FT parity
+      const currentComparatio = computeComparatioForDisplay(employee);
       
       // 1) Below minimum (<76% comparatio)
       if (currentComparatio > 0 && currentComparatio < 76) {
@@ -451,31 +511,7 @@ export const EmployeeTable: React.FC<EmployeeTableProps> = ({
 
   // Calculate real-time values for display
   const calculateRealTimeValues = useCallback((employee: any) => {
-    // Use USD for display calculations
-    const currentSalaryUSD = employee.baseSalaryUSD || employee.baseSalary || 0;
-    const proposedRaise = employee.proposedRaise || 0;
-    const newSalaryUSD = PolicyValidator.calculateNewSalary(currentSalaryUSD, proposedRaise);
-    const percentChange = PolicyValidator.calculateRaisePercent(currentSalaryUSD, proposedRaise);
-    
-    // Calculate new comparatio using ORIGINAL currency (not USD)
-    // proposedRaise is in USD, so we need to convert it to original currency for comparatio calculation
-    const currentSalaryOriginal = employee.baseSalary || 0;
-    const salaryGradeMid = employee.salaryGradeMid || 0;
-    
-    let newComparatio = 0;
-    if (proposedRaise > 0 && salaryGradeMid > 0 && currentSalaryOriginal > 0) {
-      // Convert USD raise amount to original currency
-      const currencyConversionRate = currentSalaryOriginal / (employee.baseSalaryUSD || currentSalaryOriginal);
-      const proposedRaiseOriginalCurrency = proposedRaise * currencyConversionRate;
-      
-      // Calculate new salary in original currency  
-      const newSalaryOriginal = currentSalaryOriginal + proposedRaiseOriginalCurrency;
-      
-      // Calculate comparatio using original currency values
-      newComparatio = Math.round((newSalaryOriginal / salaryGradeMid) * 100);
-    }
-    
-    return { newSalary: newSalaryUSD, percentChange, newComparatio };
+    return computeRealTimeRaiseValues(employee);
   }, []);
 
   // Filter and sort employees
@@ -506,7 +542,7 @@ export const EmployeeTable: React.FC<EmployeeTableProps> = ({
             }
             return emp.performanceRating && emp.performanceRating >= 4.0;
           case 'atRisk':
-            return (emp.comparatio && emp.comparatio < 80);
+            { const c = computeComparatioForDisplay(emp); return c > 0 && c < 80; }
           case 'belowRange': {
             const base = typeof emp.baseSalary === 'number' ? emp.baseSalary : emp.baseSalaryUSD;
             const min = emp.salaryGradeMin;
@@ -518,11 +554,11 @@ export const EmployeeTable: React.FC<EmployeeTableProps> = ({
             return typeof base === 'number' && typeof max === 'number' && base > max;
           }
           case 'below75':
-            return emp.comparatio && emp.comparatio <= 75;
+            { const c = computeComparatioForDisplay(emp); return c > 0 && c <= 75; }
           case 'below85NotBelow75':
-            return emp.comparatio && emp.comparatio < 85 && emp.comparatio > 75;
+            { const c = computeComparatioForDisplay(emp); return c < 85 && c > 75; }
           case 'above85':
-            return emp.comparatio && emp.comparatio >= 85;
+            { const c = computeComparatioForDisplay(emp); return c >= 85; }
           case 'seg1_24m': {
             try {
               // Check for Segment 1 - using the same logic as getAdjustmentConsiderations
@@ -601,6 +637,13 @@ export const EmployeeTable: React.FC<EmployeeTableProps> = ({
         return sortDirection === 'asc' 
           ? aVal.localeCompare(bVal)
           : bVal.localeCompare(aVal);
+      }
+
+      // Computed comparatio sorting using effective salary
+      if (sortField === 'comparatio') {
+        const aComp = computeComparatioForDisplay(a);
+        const bComp = computeComparatioForDisplay(b);
+        return sortDirection === 'asc' ? aComp - bComp : bComp - aComp;
       }
 
       // Numeric comparison
@@ -789,6 +832,7 @@ export const EmployeeTable: React.FC<EmployeeTableProps> = ({
               const violationColor = PolicyValidator.getViolationColor(violations);
               const considerations = getAdjustmentConsiderations(employee);
               const realTimeValues = calculateRealTimeValues(employee);
+              const tableComparatio = computeComparatioForDisplay(employee);
               const isEditing = editingEmployeeId === employee.employeeId;
               const currentRaiseValue = isEditing 
                 ? tempRaiseValues[employee.employeeId] || '0'
@@ -872,12 +916,12 @@ export const EmployeeTable: React.FC<EmployeeTableProps> = ({
                     ) : (
                       <div 
                         className={styles.salaryInfo} 
-                        onClick={() => handleStartSalaryEditing(employee.employeeId, employee.baseSalary || employee.baseSalaryUSD || 0)}
+                        onClick={() => handleStartSalaryEditing(employee.employeeId, getEffectiveSalary(employee))}
                         title="Click to edit current salary"
                       >
                         {formatCurrencyWithOriginal(
-                          employee.baseSalaryUSD || employee.baseSalary,
-                          employee.baseSalary,
+                          computeEffectiveSalaryUSD(employee),
+                          getEffectiveSalary(employee),
                           employee.currency
                         )}
                         <span className={styles.editIcon}>✏️</span>
@@ -892,16 +936,16 @@ export const EmployeeTable: React.FC<EmployeeTableProps> = ({
                   <td>
                     <div className={styles.comparatioCell}>
                       <div className={styles.comparatioValue}>
-                        {employee.comparatio > 0 ? formatPercentage(employee.comparatio) : 'N/A'}
+                        {tableComparatio > 0 ? formatPercentage(tableComparatio) : 'N/A'}
                       </div>
-                      {employee.comparatio > 0 && (
+                      {tableComparatio > 0 && (
                         <div className={`${styles.comparatioBar} ${
-                          employee.comparatio >= 90 ? styles.high :
-                          employee.comparatio >= 80 ? styles.medium : styles.low
+                          tableComparatio >= 90 ? styles.high :
+                          tableComparatio >= 80 ? styles.medium : styles.low
                         }`}>
                           <div 
                             className={styles.comparatioFill}
-                            style={{ width: `${Math.min(employee.comparatio, 100)}%` }}
+                            style={{ width: `${Math.min(tableComparatio, 100)}%` }}
                           />
                         </div>
                       )}
@@ -965,14 +1009,14 @@ export const EmployeeTable: React.FC<EmployeeTableProps> = ({
                         <div className={styles.salaryValue}>
                           {formatCurrencyWithOriginal(
                             realTimeValues.newSalary,
-                            employee.baseSalary && employee.currency && employee.currency !== budgetCurrency 
-                              ? (realTimeValues.newSalary * (employee.baseSalary / (employee.baseSalaryUSD || employee.baseSalary)))
+                            getEffectiveSalary(employee) && employee.currency && employee.currency !== budgetCurrency 
+                              ? (realTimeValues.newSalary * (getEffectiveSalary(employee) / computeEffectiveSalaryUSD(employee)))
                               : realTimeValues.newSalary,
                             employee.currency
                           )}
                         </div>
                         <div className={styles.salaryChange}>
-                          +{formatCurrency(realTimeValues.newSalary - (employee.baseSalaryUSD || employee.baseSalary))}
+                          +{formatCurrency(realTimeValues.newSalary - computeEffectiveSalaryUSD(employee))}
                         </div>
                       </>
                     ) : (

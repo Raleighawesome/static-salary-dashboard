@@ -247,13 +247,15 @@ export class EmployeeCalculations {
   // Analyze salary position and market competitiveness
   public static analyzeSalary(employee: any): SalaryAnalysis {
     // Try multiple field names for salary data
-    // Use original currency (baseSalary) first for comparatio calculations, fallback to USD
-    const currentSalary = employee.baseSalary || 
-                         employee.baseSalaryUSD || 
-                         employee['base_salary'] || 
-                         employee['salary'] || 
-                         employee['annual_salary'] || 
-                         0;
+    // Use effective salary based on timeType for comparatio calculations
+    const currentSalary = employee.timeType === 'Part time' && employee.partTimeSalary
+      ? employee.partTimeSalary
+      : (employee.baseSalary || 
+         employee.baseSalaryUSD || 
+         employee['base_salary'] || 
+         employee['salary'] || 
+         employee['annual_salary'] || 
+         0);
     
     const salaryGradeMin = employee.salaryGradeMin || 
                           employee['salary_grade_min'] || 

@@ -68,13 +68,14 @@ const SALARY_COLUMN_MAPPINGS: Record<string, keyof SalarySheetRow> = {
   // Salary information - RH format specific mappings
   'base_salary': 'baseSalary',
   'basesalary': 'baseSalary',
-  'salary': 'baseSalary',
-  'annual_salary': 'baseSalary',
   'base salary': 'baseSalary',
   'annual salary': 'baseSalary',
   'base pay all countries': 'baseSalary',
   'total base pay': 'baseSalary',
   'annual calculated base pay all countries': 'baseSalary',
+  
+  // Part-time salary field - specific "Salary" field for part-time employees
+  'salary': 'partTimeSalary',
   
   // Salary grade information - RH format specific
   'salary_grade_min': 'salaryGradeMin',
@@ -111,6 +112,9 @@ const SALARY_COLUMN_MAPPINGS: Record<string, keyof SalarySheetRow> = {
   'last_raise_date': 'lastRaiseDate',
   'last raise date': 'lastRaiseDate',
   'last salary change date': 'lastRaiseDate',
+  
+  // Time Type field - Full time, Part time
+  'time type': 'timeType',
   'department': 'departmentCode',
   'department_code': 'departmentCode',
   'department - cc based': 'departmentCode',
@@ -468,6 +472,12 @@ export class DataParser {
               // Keep rows that have at least a couple of non-empty values
               .filter(obj => Object.values(obj).filter(v => v !== '').length >= Math.min(2, normalizedHeaders.length * 0.2));
 
+            console.log(`✅ Successfully parsed CSV: ${objects.length} rows, ${normalizedHeaders.length} columns`);
+            console.log(`📋 Sample row:`, objects[0]);
+            console.log(`📋 Available columns:`, normalizedHeaders.slice(0, 15));
+            console.log(`🔍 Looking for timeType columns:`, normalizedHeaders.filter(h => h.includes('time') || h.includes('type')));
+            console.log(`💰 Looking for salary columns:`, normalizedHeaders.filter(h => h.includes('salary')));
+            
             resolve(objects);
           } catch (err) {
             reject(err);
@@ -614,6 +624,8 @@ export class DataParser {
           console.log(`✅ Successfully parsed XLSX: ${objects.length} rows, ${normalizedHeaders.length} columns`);
           console.log(`📋 Sample row:`, objects[0]);
           console.log(`📋 Available columns:`, normalizedHeaders.slice(0, 15));
+          console.log(`🔍 Looking for timeType columns:`, normalizedHeaders.filter(h => h.includes('time') || h.includes('type')));
+          console.log(`💰 Looking for salary columns:`, normalizedHeaders.filter(h => h.includes('salary')));
           
           resolve(objects);
         } catch (error) {
@@ -644,7 +656,7 @@ export class DataParser {
                      // Handle numeric fields
            if (typeof value === 'string' && value !== '') {
              // Try to parse as number for numeric fields (excluding performanceRating which can be text)
-             const numericFields = ['baseSalary', 'salaryGradeMin', 'salaryGradeMid', 
+             const numericFields = ['baseSalary', 'partTimeSalary', 'salaryGradeMin', 'salaryGradeMid', 
                                   'salaryGradeMax', 'timeInRole', 'businessImpactScore', 'retentionRisk'];
              
              if (numericFields.includes(mappedField as string)) {
@@ -694,7 +706,10 @@ export class DataParser {
       
       // Debug: Log first few mapped rows
       if (rowIndex < 3) {
-
+        console.log(`🔍 Mapped row ${rowIndex + 1}:`, mappedRow);
+        console.log(`📋 Available keys in original row:`, Object.keys(row));
+        console.log(`🎯 timeType field:`, mappedRow.timeType);
+        console.log(`💰 partTimeSalary field:`, mappedRow.partTimeSalary);
       }
       
       return mappedRow as T;
