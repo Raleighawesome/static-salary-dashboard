@@ -9,23 +9,23 @@ import styles from './EmployeeDetail.module.css';
 // dead-zone issues and to keep them pure and reusable. These functions do not
 // depend on component state/props other than the provided employee object.
 function getEffectiveSalary(emp: any) {
-  // For part-time employees, use the partTimeSalary as the effective salary.
-  if (emp.timeType === 'Part time' && emp.partTimeSalary) {
+  if (emp.partTimeSalary && emp.fte) {
+    return emp.partTimeSalary * emp.fte;
+  }
+  return emp.baseSalary || 0;
+}
+
+function getFullTimeSalary(emp: any) {
+  if (emp.partTimeSalary) {
     return emp.partTimeSalary;
   }
-  // For full-time (or missing) time types, fall back to baseSalary.
+  if (emp.fte && emp.fte > 0 && emp.baseSalary) {
+    return emp.baseSalary / emp.fte;
+  }
   return emp.baseSalary || 0;
 }
 
 function computeEffectiveSalaryUSD(emp: any) {
-  // For part-time employees, convert partTimeSalary to USD when possible.
-  if (emp.timeType === 'Part time' && emp.partTimeSalary) {
-    if (emp.currency !== 'USD' && emp.baseSalary && emp.baseSalaryUSD && emp.baseSalary > 0) {
-      return emp.partTimeSalary * (emp.baseSalaryUSD / emp.baseSalary);
-    }
-    return emp.partTimeSalary;
-  }
-  // For full-time (or missing) time types, prefer baseSalaryUSD and fall back to baseSalary.
   return emp.baseSalaryUSD || emp.baseSalary || 0;
 }
 
@@ -74,12 +74,7 @@ export const EmployeeDetail: React.FC<EmployeeDetailProps> = ({
   // State for inline editing
   const [isEditingRaise, setIsEditingRaise] = useState(false);
   const [tempProposedRaisePercent, setTempProposedRaisePercent] = useState(() => {
-    // Calculate initial percentage from existing currency amount using effective salary
-    const effectiveSalaryUSD = employee.timeType === 'Part time' && employee.partTimeSalary
-      ? (employee.currency !== 'USD' && employee.baseSalary && employee.baseSalaryUSD && employee.baseSalary > 0
-          ? employee.partTimeSalary * (employee.baseSalaryUSD / employee.baseSalary)
-          : employee.partTimeSalary)
-      : (employee.baseSalaryUSD || employee.baseSalary || 0);
+    const effectiveSalaryUSD = computeEffectiveSalaryUSD(employee);
     return effectiveSalaryUSD > 0 ? ((employee.proposedRaise || 0) / effectiveSalaryUSD) * 100 : 0;
   });
   const [proposedRaise, setProposedRaise] = useState(employee.proposedRaise || 0);
@@ -359,23 +354,25 @@ export const EmployeeDetail: React.FC<EmployeeDetailProps> = ({
   // Calculate new comparatio when there's a proposed raise (matching EmployeeTable logic)
   const newComparatio = useMemo(() => {
     if (proposedRaise <= 0) return 0;
-    
-    // Use the same logic as EmployeeTable - calculate using original currency
-    const currentSalaryOriginal = employee.baseSalary || 0;
+
+    // Use the same logic as EmployeeTable - calculate using full-time equivalent salary
+    const currentSalaryOriginal = getEffectiveSalary(employee); // actual pay
+    const fullTimeSalary = getFullTimeSalary(employee);
     const salaryGradeMid = employee.salaryGradeMid || analysis.salaryAnalysis.salaryGradeMid || 0;
-    
+    const fte = employee.fte || 1;
+
     if (salaryGradeMid <= 0 || currentSalaryOriginal <= 0) return 0;
-    
-    // Convert USD raise amount to original currency (matching EmployeeTable.tsx lines 294-296)
+
+    // Convert USD raise amount to original currency
     const currencyConversionRate = currentSalaryOriginal / (employee.baseSalaryUSD || currentSalaryOriginal);
     const proposedRaiseOriginalCurrency = proposedRaise * currencyConversionRate;
-    
-    // Calculate new salary in original currency  
-    const newSalaryOriginal = currentSalaryOriginal + proposedRaiseOriginalCurrency;
-    
-    // Calculate comparatio using original currency values (matching EmployeeTable.tsx line 302)
-    return Math.round((newSalaryOriginal / salaryGradeMid) * 100);
-  }, [proposedRaise, employee.baseSalary, employee.baseSalaryUSD, employee.salaryGradeMid, analysis.salaryAnalysis.salaryGradeMid]);
+
+    // Calculate new full-time salary in original currency
+    const newFullTimeSalary = fullTimeSalary + proposedRaiseOriginalCurrency / fte;
+
+    // Calculate comparatio using original currency values
+    return Math.round((newFullTimeSalary / salaryGradeMid) * 100);
+  }, [proposedRaise, employee.baseSalary, employee.baseSalaryUSD, employee.salaryGradeMid, analysis.salaryAnalysis.salaryGradeMid, employee.partTimeSalary, employee.fte]);
 
   // Calculate new segment based on new comparatio after proposed raise
   const newSegment = useMemo(() => {

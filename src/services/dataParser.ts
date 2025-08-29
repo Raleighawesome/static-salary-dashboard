@@ -115,6 +115,7 @@ const SALARY_COLUMN_MAPPINGS: Record<string, keyof SalarySheetRow> = {
   
   // Time Type field - Full time, Part time
   'time type': 'timeType',
+  'fte': 'fte',
   'department': 'departmentCode',
   'department_code': 'departmentCode',
   'department - cc based': 'departmentCode',
@@ -657,7 +658,7 @@ export class DataParser {
                      // Handle numeric fields
            if (typeof value === 'string' && value !== '') {
              // Try to parse as number for numeric fields (excluding performanceRating which can be text)
-             const numericFields = ['baseSalary', 'partTimeSalary', 'salaryGradeMin', 'salaryGradeMid', 
+             const numericFields = ['baseSalary', 'partTimeSalary', 'fte', 'salaryGradeMin', 'salaryGradeMid',
                                   'salaryGradeMax', 'timeInRole', 'businessImpactScore', 'retentionRisk'];
              
              if (numericFields.includes(mappedField as string)) {
