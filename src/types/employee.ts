@@ -10,7 +10,8 @@ export interface Employee {
   baseSalary: number;
   baseSalaryUSD: number; // Converted for comparison
   timeType?: string; // Full time, Part time
-  partTimeSalary?: number; // For part-time employees
+  salary?: number; // Full-time salary
+  fte?: number; // Full-time equivalent factor
   comparatio: number;
   timeInRole: number; // in months
   performanceRating?: number | string; // Optional, from performance sheet
@@ -51,7 +52,8 @@ export interface SalarySheetRow {
   currency?: string;
   baseSalary?: number;
   timeType?: string; // Full time, Part time
-  partTimeSalary?: number; // For part-time employees
+  salary?: number; // Full-time salary
+  fte?: number; // Full-time equivalent factor
   comparatio?: number;
   salaryGradeMin?: number;
   salaryGradeMid?: number;

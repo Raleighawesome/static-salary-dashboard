@@ -183,7 +183,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
   const handleEmployeeSelect = useCallback((employee: any) => {
     console.log('🎯 handleEmployeeSelect called with:', employee);
     console.log('🔍 timeType in selected employee:', employee.timeType);
-    console.log('💰 partTimeSalary in selected employee:', employee.partTimeSalary);
+    console.log('💰 salary in selected employee:', employee.salary);
     console.log('📋 All employee keys:', Object.keys(employee));
     console.log('🔍 employeeData length:', employeeData.length);
     console.log('📊 Sample employee from employeeData:', employeeData[0]);

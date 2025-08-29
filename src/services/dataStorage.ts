@@ -11,6 +11,9 @@ export interface EmployeeRecord {
   currency: string;
   baseSalary: number;
   baseSalaryUSD: number; // Converted to USD for comparison
+  timeType?: string;
+  salary?: number; // Full-time salary reference
+  fte?: number; // Full-time equivalent factor
   comparatio: number;
   timeInRole: number; // months
   performanceRating?: string | number;

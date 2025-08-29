@@ -5,28 +5,31 @@ import { PolicyValidator } from '../utils/policyValidation';
 import { TempFieldStorageService } from '../services/tempFieldStorage';
 import { EmployeeCalculations } from '../utils/calculations';
 
-// Helper functions for effective salary calculation
+// Helper functions for salary calculations
 function getEffectiveSalary(emp: any) {
-  if (emp.timeType === 'Part time' && emp.partTimeSalary) {
-    return emp.partTimeSalary;
+  if (emp.salary && emp.fte) {
+    return emp.salary * emp.fte;
+  }
+  return emp.baseSalary || 0;
+}
+
+function getFullTimeSalary(emp: any) {
+  if (emp.salary) {
+    return emp.salary;
+  }
+  if (emp.fte && emp.fte > 0 && emp.baseSalary) {
+    return emp.baseSalary / emp.fte;
   }
   return emp.baseSalary || 0;
 }
 
 function computeEffectiveSalaryUSD(emp: any) {
-  if (emp.timeType === 'Part time' && emp.partTimeSalary) {
-    if (emp.currency !== 'USD' && emp.baseSalary && emp.baseSalaryUSD && emp.baseSalary > 0) {
-      return emp.partTimeSalary * (emp.baseSalaryUSD / emp.baseSalary);
-    }
-    return emp.partTimeSalary;
-  }
   return emp.baseSalaryUSD || emp.baseSalary || 0;
 }
 
-// Compute comparatio using original currency effective salary and salary grade midpoint.
-// This mirrors the logic used in EmployeeDetail to keep values consistent for PT vs FT.
+// Compute comparatio using full-time equivalent salary and salary grade midpoint.
 function computeComparatioForDisplay(emp: any): number {
-  const currentSalaryOriginal = getEffectiveSalary(emp);
+  const currentSalaryOriginal = getFullTimeSalary(emp);
   const salaryGradeMid = emp.salaryGradeMid ||
                          emp['salary_grade_mid'] ||
                          emp['mid_salary'] ||
@@ -49,17 +52,18 @@ function computeRealTimeRaiseValues(emp: any): { newSalary: number; percentChang
   const newSalaryUSD = PolicyValidator.calculateNewSalary(currentSalaryUSD, proposedRaise);
   const percentChange = PolicyValidator.calculateRaisePercent(currentSalaryUSD, proposedRaise);
 
-  // Calculate new comparatio using ORIGINAL currency (not USD)
-  const currentSalaryOriginal = getEffectiveSalary(emp);
+  // Calculate new comparatio using ORIGINAL currency (full-time equivalent)
+  const currentSalaryOriginal = getEffectiveSalary(emp); // actual pay
+  const fullTimeSalary = getFullTimeSalary(emp);
   const salaryGradeMid = emp.salaryGradeMid || 0;
+  const fte = emp.fte || 1;
   let newComparatio = 0;
   if (proposedRaise > 0 && salaryGradeMid > 0 && currentSalaryOriginal > 0) {
-    // Convert USD raise amount to original currency using implied FX from base vs baseUSD
     const effectiveSalaryUSD = currentSalaryUSD || 1;
     const currencyConversionRate = currentSalaryOriginal / effectiveSalaryUSD;
     const proposedRaiseOriginalCurrency = proposedRaise * currencyConversionRate;
-    const newSalaryOriginal = currentSalaryOriginal + proposedRaiseOriginalCurrency;
-    newComparatio = Math.round((newSalaryOriginal / salaryGradeMid) * 100);
+    const newFullTimeSalary = fullTimeSalary + proposedRaiseOriginalCurrency / fte;
+    newComparatio = Math.round((newFullTimeSalary / salaryGradeMid) * 100);
   }
 
   return { newSalary: newSalaryUSD, percentChange, newComparatio };
@@ -375,19 +379,19 @@ export const EmployeeTable: React.FC<EmployeeTableProps> = ({
     // Assume entered salary is in original currency, convert to USD
     const newOriginalSalary = newSalary;
     const newUSDSalary = newSalary * conversionRate;
-    
-    // Recalculate comparatio based on new original currency salary
-    const newComparatio = employee.salaryGradeMid > 0 
-      ? Math.round((newOriginalSalary / employee.salaryGradeMid) * 100)
-      : 0;
-    
+    const newFullTimeSalary = employee.fte && employee.fte > 0 ? newOriginalSalary / employee.fte : newOriginalSalary;
 
-    
+    // Recalculate comparatio based on full-time equivalent salary
+    const newComparatio = employee.salaryGradeMid > 0
+      ? Math.round((newFullTimeSalary / employee.salaryGradeMid) * 100)
+      : 0;
+
     // Update employee data with new base salary values only
     // Do NOT modify proposed raise when updating current salary
     onEmployeeUpdate(employee.employeeId, {
       baseSalary: newOriginalSalary,
       baseSalaryUSD: newUSDSalary,
+      salary: newFullTimeSalary,
       comparatio: newComparatio,
     });
     
