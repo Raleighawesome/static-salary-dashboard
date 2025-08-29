@@ -11,6 +11,7 @@ This dashboard helps managers during salary review cycles to:
 - Validate decisions against company policies (comparatio floors, raise limits)
 - Export finalized decisions for leadership approval
 - Maintain data persistence with automatic backups
+- Handle part-time salaries by applying FTE factors to base pay
 
 ## 🚀 Quick Start
 
