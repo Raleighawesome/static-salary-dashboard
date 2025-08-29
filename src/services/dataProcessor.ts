@@ -152,7 +152,7 @@ export class DataProcessor {
       // Store processed employees
       this.processedEmployees = employees;
       console.log('📊 DataProcessor storing employees. Sample employee:', employees[0]);
-      console.log('🔍 Sample employee timeType:', employees[0]?.timeType, 'partTimeSalary:', employees[0]?.partTimeSalary);
+      console.log('🔍 Sample employee timeType:', employees[0]?.timeType, 'partTimeSalary:', employees[0]?.partTimeSalary, 'FTE:', employees[0]?.fte);
       
       // Store in IndexedDB for persistence
       if (employees.length > 0) {
@@ -166,6 +166,7 @@ export class DataProcessor {
           baseSalaryUSD: emp.baseSalaryUSD,
           timeType: emp.timeType,
           partTimeSalary: emp.partTimeSalary,
+          fte: emp.fte,
           comparatio: emp.comparatio,
           timeInRole: emp.timeInRole,
           performanceRating: emp.performanceRating,
