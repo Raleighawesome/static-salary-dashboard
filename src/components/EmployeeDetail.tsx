@@ -156,8 +156,14 @@ export const EmployeeDetail: React.FC<EmployeeDetailProps> = ({
       'comparatio', 'Comparatio', 'comp_ratio', 'comparatio_percent'
     ], salaryGradeMid > 0 ? Math.round((baseSalary / salaryGradeMid) * 100) : 0);
 
+    // Prefer calibrated rating headers explicitly before generic fallbacks
     const performanceRating = extractFieldValue([
-      'performanceRating', 'performance_rating', 'rating', 'performance',
+      'performanceRating',
+      'CALIBRATED VALUE: Overall Performance Rating',
+      'calibrated value: overall performance rating',
+      'calibrated value: performance: what',
+      'calibrated value: performance: how',
+      'performance_rating', 'rating', 'performance',
       'Performance Rating', 'Overall Performance Rating', 'Performance: What (Current)',
       'Performance: How (Current)', 'Overall Performance Rating (Current)'
     ]);

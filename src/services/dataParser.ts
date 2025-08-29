@@ -193,10 +193,11 @@ const PERFORMANCE_COLUMN_MAPPINGS: Record<string, keyof PerformanceSheetRow> = {
   'performance: how (current)': 'performanceRating',
   
   // RH Talent Assessment Calibration format specific mappings
+  // NOTE: We intentionally do NOT map any pre-calibrated ratings to avoid
+  // accidentally using pre-calibration values when calibrated values exist.
   'calibrated value: overall performance rating': 'performanceRating',
   'calibrated value: performance: what': 'performanceRating',
   'calibrated value: performance: how': 'performanceRating',
-  'pre-calibrated value: overall performance rating': 'performanceRating',
   'calibrated value: identified as future talent?': 'futuretalent',
   'calibrated value: movement readiness': 'movementReadiness',
   'calibrated value: proposed talent actions': 'proposedTalentActions',
