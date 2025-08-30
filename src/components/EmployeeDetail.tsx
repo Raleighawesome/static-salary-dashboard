@@ -9,8 +9,8 @@ import styles from './EmployeeDetail.module.css';
 // dead-zone issues and to keep them pure and reusable. These functions do not
 // depend on component state/props other than the provided employee object.
 function getEffectiveSalary(emp: any) {
-  if (emp.salary && emp.fte) {
-    return emp.salary * emp.fte;
+  if (emp.partTimeSalary && emp.fte) {
+    return emp.partTimeSalary * emp.fte;
   }
   return emp.baseSalary || 0;
 }

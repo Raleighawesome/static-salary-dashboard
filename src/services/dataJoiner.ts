@@ -21,6 +21,9 @@ function getFullTimeSalary(emp: any) {
   if (emp.fte && emp.fte > 0 && emp.baseSalary) {
     return emp.baseSalary / emp.fte;
   }
+  if (emp.fte && emp.fte > 0 && emp.baseSalary) {
+    return emp.baseSalary / emp.fte;
+  }
   return emp.baseSalary || 0;
 }
 
