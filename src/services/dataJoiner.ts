@@ -274,7 +274,8 @@ export class DataJoiner {
         if (matchResult.matchType === 'id') idMatches++;
 
         // Create merged employee record
-        const baseSalary = salaryRow.baseSalary ?? getEffectiveSalary(salaryRow);
+        const effectiveSalary = getEffectiveSalary(salaryRow);
+        const baseSalary = salaryRow.baseSalary ?? effectiveSalary;
         const timeType = salaryRow.fte && salaryRow.fte < 0.75 ? 'Part time' : 'Full time';
         console.log('🔍 Creating employee with timeType:', timeType, 'salary:', salaryRow.salary, 'FTE:', salaryRow.fte);
         employee = {
@@ -317,7 +318,8 @@ export class DataJoiner {
 
       } else {
         // No performance match - create employee from salary data only
-        const baseSalary = salaryRow.baseSalary ?? getEffectiveSalary(salaryRow);
+        const effectiveSalary = getEffectiveSalary(salaryRow);
+        const baseSalary = salaryRow.baseSalary ?? effectiveSalary;
         const timeType = salaryRow.fte && salaryRow.fte < 0.75 ? 'Part time' : 'Full time';
         console.log('🔍 Creating salary-only employee with timeType:', timeType, 'salary:', salaryRow.salary, 'FTE:', salaryRow.fte);
         employee = {
