@@ -1,4 +1,5 @@
 // Salary calculation utilities for employee detail views and metrics
+import { getDisplaySalary, getDisplaySalaryUSD, getComparatioSalary } from './salaryHelpers';
 
 export interface EmployeeTenureInfo {
   totalTenureMonths: number;
@@ -246,42 +247,35 @@ export class EmployeeCalculations {
 
   // Analyze salary position and market competitiveness
   public static analyzeSalary(employee: any): SalaryAnalysis {
-    // Try multiple field names for salary data
-    // Use full-time equivalent salary for comparatio calculations
-    const baseValue =
-      employee.baseSalary ||
-      employee.baseSalaryUSD ||
-      employee['base_salary'] ||
-      employee['salary'] ||
-      employee['annual_salary'] ||
-      0;
-    const currentSalary = employee.salary
-      ? employee.salary
-      : (employee.fte && employee.fte > 0 ? baseValue / employee.fte : baseValue);
+    // Use Base Pay All Countries for display
+    const currentSalary = getDisplaySalary(employee);
+    
+    // Use comparatio salary for grade comparisons
+    const comparatioSalary = getComparatioSalary(employee);
     
     const salaryGradeMin = employee.salaryGradeMin || 
                           employee['salary_grade_min'] || 
                           employee['grade_min'] || 
-                          (currentSalary * 0.8);
+                          (comparatioSalary * 0.8);
     
     const salaryGradeMid = employee.salaryGradeMid || 
                           employee['salary_grade_mid'] || 
                           employee['grade_mid'] || 
-                          (currentSalary * 1.1);
+                          (comparatioSalary * 1.1);
     
     const salaryGradeMax = employee.salaryGradeMax || 
                           employee['salary_grade_max'] || 
                           employee['grade_max'] || 
-                          (currentSalary * 1.4);
+                          (comparatioSalary * 1.4);
     
-    const comparatio = salaryGradeMid > 0 ? (currentSalary / salaryGradeMid) * 100 : 0;
+    const comparatio = salaryGradeMid > 0 ? (comparatioSalary / salaryGradeMid) * 100 : 0;
 
-    // Determine position in range
+    // Determine position in range using comparatio salary
     let positionInRange: SalaryAnalysis['positionInRange'];
-    if (currentSalary < salaryGradeMin) positionInRange = 'Below Range';
+    if (comparatioSalary < salaryGradeMin) positionInRange = 'Below Range';
     else if (comparatio < 90) positionInRange = 'Low';
     else if (comparatio <= 110) positionInRange = 'Target';
-    else if (currentSalary <= salaryGradeMax) positionInRange = 'High';
+    else if (comparatioSalary <= salaryGradeMax) positionInRange = 'High';
     else positionInRange = 'Above Range';
 
     // Calculate amount to next segment
@@ -376,9 +370,9 @@ export class EmployeeCalculations {
     // Cap at budget constraints
     recommendedPercent = Math.min(recommendedPercent, budgetConstraints.maxPercent);
     
-    // Use USD salary for raise calculation to ensure budget consistency
-    const usdSalary = employee.baseSalaryUSD || employee.baseSalary || salaryAnalysis.currentSalary;
-    const recommendedAmount = Math.round((usdSalary * recommendedPercent) / 100);
+    // Use display salary USD for raise calculation to ensure budget consistency
+    const displaySalaryUSD = getDisplaySalaryUSD(employee);
+    const recommendedAmount = Math.round((displaySalaryUSD * recommendedPercent) / 100);
     
 
     // Determine priority

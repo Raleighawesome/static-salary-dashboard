@@ -9,8 +9,10 @@ const sampleEmployees: EmployeeRecord[] = [
     name: 'John Doe',
     country: 'US',
     currency: 'USD',
-    baseSalary: 85000,
+    baseSalary: 85000, // Total Base Pay
     baseSalaryUSD: 85000,
+    basePayAllCountries: 85000, // Same as Total Base Pay = full-time
+    salary: 85000, // Same as Total Base Pay = full-time
     comparatio: 95,
     timeInRole: 24,
     performanceRating: 4.2,
@@ -30,8 +32,12 @@ const sampleEmployees: EmployeeRecord[] = [
     name: 'Jane Smith',
     country: 'IN',
     currency: 'INR',
-    baseSalary: 1500000,
+    baseSalary: 900000, // Total Base Pay (part-time actual)
     baseSalaryUSD: 18072,
+    basePayAllCountries: 10843, // Actual part-time pay (0.6 FTE)
+    salary: 1500000, // Full-time equivalent > Total Base Pay
+    timeType: 'Part time',
+    fte: 0.6,
     comparatio: 88,
     timeInRole: 18,
     performanceRating: 4.5,
@@ -51,8 +57,10 @@ const sampleEmployees: EmployeeRecord[] = [
     name: 'Alice Johnson',
     country: 'GB',
     currency: 'GBP',
-    baseSalary: 55000,
+    baseSalary: 55000, // Total Base Pay
     baseSalaryUSD: 75342,
+    basePayAllCountries: 55000, // Same as Total Base Pay = full-time
+    salary: 55000, // Same as Total Base Pay = full-time
     comparatio: 92,
     timeInRole: 36,
     performanceRating: 4.0,
@@ -469,6 +477,7 @@ export class DataCachingTester {
           currency: i % 3 === 0 ? 'INR' : i % 3 === 1 ? 'USD' : 'GBP',
           baseSalary: 50000 + (i * 1000),
           baseSalaryUSD: 50000 + (i * 1000), // Simplified for test
+          basePayAllCountries: 50000 + (i * 1000),
           comparatio: 80 + (i % 20),
           timeInRole: 6 + (i % 48),
           performanceRating: 3.0 + (i % 20) / 10,

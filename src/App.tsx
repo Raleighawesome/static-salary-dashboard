@@ -220,6 +220,7 @@ function App() {
       currency: emp.currency,
       baseSalary: emp.baseSalary,
       baseSalaryUSD: emp.baseSalaryUSD,
+      basePayAllCountries: emp.basePayAllCountries,
       timeType: emp.timeType,
       salary: emp.salary,
       fte: emp.fte,

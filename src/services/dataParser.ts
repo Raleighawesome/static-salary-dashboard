@@ -9,7 +9,7 @@ import type {
 } from '../types/employee';
 
 // Required columns for different file types
-const REQUIRED_SALARY_COLUMNS = ['employeeId', 'name', 'baseSalary'];
+const REQUIRED_SALARY_COLUMNS = ['employeeId', 'name', 'basePayAllCountries'];
 const REQUIRED_PERFORMANCE_COLUMNS = ['employeeId', 'name'];
 
 // Workday-specific metadata patterns to ignore
@@ -65,16 +65,18 @@ const SALARY_COLUMN_MAPPINGS: Record<string, keyof SalarySheetRow> = {
   'curr': 'currency',
   'country iso2': 'country',
   
-  // Salary information - RH format specific mappings
+  // Primary salary field - Base Pay All Countries
+  'base pay all countries': 'basePayAllCountries',
+  'annual calculated base pay all countries': 'basePayAllCountries',
+  
+  // Legacy salary information - RH format specific mappings
   'base_salary': 'baseSalary',
   'basesalary': 'baseSalary',
   'base salary': 'baseSalary',
   'annual salary': 'baseSalary',
-  'base pay all countries': 'baseSalary',
   'total base pay': 'baseSalary',
-  'annual calculated base pay all countries': 'baseSalary',
   
-  // Full-time salary field
+  // Full-time salary field (for comparatio calculations)
   'salary': 'salary',
   
   // Salary grade information - RH format specific
@@ -115,7 +117,11 @@ const SALARY_COLUMN_MAPPINGS: Record<string, keyof SalarySheetRow> = {
   
   // Time Type field - Full time, Part time
   'time type': 'timeType',
+  
+  // FTE field for full-time equivalency
   'fte': 'fte',
+  'full time equivalent': 'fte',
+  'full-time equivalent': 'fte',
   'department': 'departmentCode',
   'department_code': 'departmentCode',
   'department - cc based': 'departmentCode',
@@ -345,7 +351,7 @@ export class DataParser {
     // Additional validation for salary files
     if (fileType === 'salary') {
       const rowsWithValidSalary = mappedData.filter(row => {
-        const salary = parseFloat(row.baseSalary);
+        const salary = parseFloat(row.basePayAllCountries);
         return !isNaN(salary) && salary > 0;
       });
       
@@ -658,7 +664,7 @@ export class DataParser {
                      // Handle numeric fields
            if (typeof value === 'string' && value !== '') {
              // Try to parse as number for numeric fields (excluding performanceRating which can be text)
-             const numericFields = ['baseSalary', 'salary', 'fte', 'salaryGradeMin', 'salaryGradeMid',
+             const numericFields = ['baseSalary', 'basePayAllCountries', 'salary', 'fte', 'salaryGradeMin', 'salaryGradeMid', 
                                   'salaryGradeMax', 'timeInRole', 'businessImpactScore', 'retentionRisk'];
              
              if (numericFields.includes(mappedField as string)) {
@@ -711,7 +717,7 @@ export class DataParser {
         console.log(`🔍 Mapped row ${rowIndex + 1}:`, mappedRow);
         console.log(`📋 Available keys in original row:`, Object.keys(row));
         console.log(`🎯 timeType field:`, mappedRow.timeType);
-        console.log(`💰 salary field:`, mappedRow.salary);
+        console.log(`💰 partTimeSalary field:`, mappedRow.partTimeSalary);
       }
       
       return mappedRow as T;
@@ -735,8 +741,8 @@ export class DataParser {
         errors.push('Employee name is required');
       }
       
-      if (!row.baseSalary || row.baseSalary <= 0) {
-        errors.push('Valid base salary is required');
+      if (!row.basePayAllCountries || row.basePayAllCountries <= 0) {
+        errors.push('Valid Base Pay All Countries is required');
       }
       
       if (!row.country) {
@@ -748,8 +754,8 @@ export class DataParser {
       }
       
       // Data type validation
-      if (row.baseSalary && typeof row.baseSalary !== 'number') {
-        errors.push('Base salary must be a number');
+      if (row.basePayAllCountries && typeof row.basePayAllCountries !== 'number') {
+        errors.push('Base Pay All Countries must be a number');
       }
       
       if (row.timeInRole && (typeof row.timeInRole !== 'number' || row.timeInRole < 0)) {

@@ -1,4 +1,5 @@
 import type { PolicyViolation } from '../types/employee';
+import { getDisplaySalaryUSD, getComparatioSalary } from './salaryHelpers';
 
 export interface PolicySettings {
   comparatioFloor: number; // 76%
@@ -57,9 +58,25 @@ export class PolicyValidator {
     
     // Calculate proposed comparatio if there's a proposed raise
     if (employee.proposedRaise && employee.proposedRaise > 0 && employee.salaryGradeMid) {
-      const currentSalary = employee.baseSalaryUSD || employee.baseSalary || 0;
-      const proposedSalary = currentSalary + employee.proposedRaise;
-      effectiveComparatio = (proposedSalary / employee.salaryGradeMid) * 100;
+      const currentComparatioSalary = getComparatioSalary(employee);
+      const displaySalaryUSD = getDisplaySalaryUSD(employee);
+      
+      // Convert raise to local currency if needed
+      let proposedRaiseLocalCurrency = employee.proposedRaise;
+      if (displaySalaryUSD > 0 && employee.basePayAllCountries) {
+        const conversionRate = employee.basePayAllCountries / displaySalaryUSD;
+        proposedRaiseLocalCurrency = employee.proposedRaise * conversionRate;
+      }
+      
+      // For part-time employees, convert actual raise to full-time equivalent for comparatio
+      let newComparatioSalary = currentComparatioSalary;
+      if (employee.timeType === 'Part time' && employee.fte && employee.fte > 0) {
+        newComparatioSalary = currentComparatioSalary + (proposedRaiseLocalCurrency / employee.fte);
+      } else {
+        newComparatioSalary = currentComparatioSalary + proposedRaiseLocalCurrency;
+      }
+      
+      effectiveComparatio = (newComparatioSalary / employee.salaryGradeMid) * 100;
     }
     
     if (effectiveComparatio && effectiveComparatio < policies.comparatioFloor) {

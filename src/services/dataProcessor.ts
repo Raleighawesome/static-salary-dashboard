@@ -152,7 +152,7 @@ export class DataProcessor {
       // Store processed employees
       this.processedEmployees = employees;
       console.log('📊 DataProcessor storing employees. Sample employee:', employees[0]);
-      console.log('🔍 Sample employee timeType:', employees[0]?.timeType, 'salary:', employees[0]?.salary, 'FTE:', employees[0]?.fte);
+      console.log('🔍 Sample employee timeType:', employees[0]?.timeType, 'basePayAllCountries:', employees[0]?.basePayAllCountries);
       
       // Store in IndexedDB for persistence
       if (employees.length > 0) {
@@ -164,6 +164,7 @@ export class DataProcessor {
           currency: emp.currency,
           baseSalary: emp.baseSalary,
           baseSalaryUSD: emp.baseSalaryUSD,
+          basePayAllCountries: emp.basePayAllCountries,
           timeType: emp.timeType,
           salary: emp.salary,
           fte: emp.fte,
@@ -367,7 +368,8 @@ export class DataProcessor {
         this.processedEmployees = storedEmployees.map(emp => ({
           ...emp,
           firstName: emp.name.split(' ')[0] || '',
-          lastName: emp.name.split(' ').slice(1).join(' ') || ''
+          lastName: emp.name.split(' ').slice(1).join(' ') || '',
+          basePayAllCountries: emp.basePayAllCountries || 0
         }));
       }
 
