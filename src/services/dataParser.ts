@@ -74,8 +74,8 @@ const SALARY_COLUMN_MAPPINGS: Record<string, keyof SalarySheetRow> = {
   'total base pay': 'baseSalary',
   'annual calculated base pay all countries': 'baseSalary',
   
-  // Part-time salary field - specific "Salary" field for part-time employees
-  'salary': 'partTimeSalary',
+  // Full-time salary field
+  'salary': 'salary',
   
   // Salary grade information - RH format specific
   'salary_grade_min': 'salaryGradeMin',
@@ -658,7 +658,7 @@ export class DataParser {
                      // Handle numeric fields
            if (typeof value === 'string' && value !== '') {
              // Try to parse as number for numeric fields (excluding performanceRating which can be text)
-             const numericFields = ['baseSalary', 'partTimeSalary', 'fte', 'salaryGradeMin', 'salaryGradeMid',
+             const numericFields = ['baseSalary', 'salary', 'fte', 'salaryGradeMin', 'salaryGradeMid',
                                   'salaryGradeMax', 'timeInRole', 'businessImpactScore', 'retentionRisk'];
              
              if (numericFields.includes(mappedField as string)) {
@@ -711,7 +711,7 @@ export class DataParser {
         console.log(`🔍 Mapped row ${rowIndex + 1}:`, mappedRow);
         console.log(`📋 Available keys in original row:`, Object.keys(row));
         console.log(`🎯 timeType field:`, mappedRow.timeType);
-        console.log(`💰 partTimeSalary field:`, mappedRow.partTimeSalary);
+        console.log(`💰 salary field:`, mappedRow.salary);
       }
       
       return mappedRow as T;

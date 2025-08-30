@@ -221,7 +221,7 @@ function App() {
       baseSalary: emp.baseSalary,
       baseSalaryUSD: emp.baseSalaryUSD,
       timeType: emp.timeType,
-      partTimeSalary: emp.partTimeSalary,
+      salary: emp.salary,
       fte: emp.fte,
       comparatio: emp.comparatio,
       timeInRole: emp.timeInRole,

@@ -7,15 +7,15 @@ import { EmployeeCalculations } from '../utils/calculations';
 
 // Helper functions for salary calculations
 function getEffectiveSalary(emp: any) {
-  if (emp.partTimeSalary && emp.fte) {
-    return emp.partTimeSalary * emp.fte;
+  if (emp.salary && emp.fte) {
+    return emp.salary * emp.fte;
   }
   return emp.baseSalary || 0;
 }
 
 function getFullTimeSalary(emp: any) {
-  if (emp.partTimeSalary) {
-    return emp.partTimeSalary;
+  if (emp.salary) {
+    return emp.salary;
   }
   if (emp.fte && emp.fte > 0 && emp.baseSalary) {
     return emp.baseSalary / emp.fte;
@@ -379,19 +379,19 @@ export const EmployeeTable: React.FC<EmployeeTableProps> = ({
     // Assume entered salary is in original currency, convert to USD
     const newOriginalSalary = newSalary;
     const newUSDSalary = newSalary * conversionRate;
-    
-    // Recalculate comparatio based on new original currency salary
-    const newComparatio = employee.salaryGradeMid > 0 
-      ? Math.round((newOriginalSalary / employee.salaryGradeMid) * 100)
-      : 0;
-    
+    const newFullTimeSalary = employee.fte && employee.fte > 0 ? newOriginalSalary / employee.fte : newOriginalSalary;
 
-    
+    // Recalculate comparatio based on full-time equivalent salary
+    const newComparatio = employee.salaryGradeMid > 0
+      ? Math.round((newFullTimeSalary / employee.salaryGradeMid) * 100)
+      : 0;
+
     // Update employee data with new base salary values only
     // Do NOT modify proposed raise when updating current salary
     onEmployeeUpdate(employee.employeeId, {
       baseSalary: newOriginalSalary,
       baseSalaryUSD: newUSDSalary,
+      salary: newFullTimeSalary,
       comparatio: newComparatio,
     });
     

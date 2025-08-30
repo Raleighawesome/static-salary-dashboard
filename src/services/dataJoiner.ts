@@ -8,15 +8,18 @@ import { NameNormalizer } from '../utils/nameNormalizer';
 
 // Helper functions for salary calculations
 function getEffectiveSalary(emp: any) {
-  if (emp.partTimeSalary && emp.fte) {
-    return emp.partTimeSalary * emp.fte;
+  if (emp.salary && emp.fte) {
+    return emp.salary * emp.fte;
   }
   return emp.baseSalary || 0;
 }
 
 function getFullTimeSalary(emp: any) {
-  if (emp.partTimeSalary) {
-    return emp.partTimeSalary;
+  if (emp.salary) {
+    return emp.salary;
+  }
+  if (emp.fte && emp.fte > 0 && emp.baseSalary) {
+    return emp.baseSalary / emp.fte;
   }
   if (emp.fte && emp.fte > 0 && emp.baseSalary) {
     return emp.baseSalary / emp.fte;
@@ -262,7 +265,7 @@ export class DataJoiner {
       if (matchResult.match) {
         // Found a match - merge the data
         const performanceRow = matchResult.match;
-        
+
         // Remove the matched performance row from unmatched list
         const perfIndex = unmatchedPerformanceRows.indexOf(performanceRow);
         if (perfIndex > -1) {
@@ -275,7 +278,9 @@ export class DataJoiner {
 
         // Create merged employee record
         const effectiveSalary = getEffectiveSalary(salaryRow);
-        console.log('🔍 Creating employee with timeType:', salaryRow.timeType, 'partTimeSalary:', salaryRow.partTimeSalary, 'FTE:', salaryRow.fte);
+        const baseSalary = salaryRow.baseSalary ?? effectiveSalary;
+        const timeType = salaryRow.fte && salaryRow.fte < 0.75 ? 'Part time' : 'Full time';
+        console.log('🔍 Creating employee with timeType:', timeType, 'salary:', salaryRow.salary, 'FTE:', salaryRow.fte);
         employee = {
           employeeId: salaryRow.employeeId || performanceRow.employeeId || '',
           email: salaryRow.email || performanceRow.email || '',
@@ -284,10 +289,10 @@ export class DataJoiner {
           lastName: salaryRow.lastName || '',
           country: salaryRow.country || '',
           currency: salaryRow.currency || 'USD',
-          baseSalary: effectiveSalary,
-          baseSalaryUSD: effectiveSalary, // Will be converted later
-          timeType: salaryRow.timeType,
-          partTimeSalary: salaryRow.partTimeSalary,
+          baseSalary,
+          baseSalaryUSD: baseSalary, // Will be converted later
+          timeType,
+          salary: salaryRow.salary,
           fte: salaryRow.fte,
           comparatio: 0, // Will be calculated
           timeInRole: salaryRow.timeInRole || 0,
@@ -317,7 +322,9 @@ export class DataJoiner {
       } else {
         // No performance match - create employee from salary data only
         const effectiveSalary = getEffectiveSalary(salaryRow);
-        console.log('🔍 Creating salary-only employee with timeType:', salaryRow.timeType, 'partTimeSalary:', salaryRow.partTimeSalary, 'FTE:', salaryRow.fte);
+        const baseSalary = salaryRow.baseSalary ?? effectiveSalary;
+        const timeType = salaryRow.fte && salaryRow.fte < 0.75 ? 'Part time' : 'Full time';
+        console.log('🔍 Creating salary-only employee with timeType:', timeType, 'salary:', salaryRow.salary, 'FTE:', salaryRow.fte);
         employee = {
           employeeId: salaryRow.employeeId || '',
           email: salaryRow.email || '',
@@ -326,10 +333,10 @@ export class DataJoiner {
           lastName: salaryRow.lastName || '',
           country: salaryRow.country || '',
           currency: salaryRow.currency || 'USD',
-          baseSalary: effectiveSalary,
-          baseSalaryUSD: effectiveSalary,
-          timeType: salaryRow.timeType,
-          partTimeSalary: salaryRow.partTimeSalary,
+          baseSalary,
+          baseSalaryUSD: baseSalary,
+          timeType,
+          salary: salaryRow.salary,
           fte: salaryRow.fte,
           comparatio: 0,
           timeInRole: salaryRow.timeInRole || 0,

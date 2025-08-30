@@ -16,8 +16,8 @@ function getEffectiveSalary(emp: any) {
 }
 
 function getFullTimeSalary(emp: any) {
-  if (emp.partTimeSalary) {
-    return emp.partTimeSalary;
+  if (emp.salary) {
+    return emp.salary;
   }
   if (emp.fte && emp.fte > 0 && emp.baseSalary) {
     return emp.baseSalary / emp.fte;
@@ -372,7 +372,7 @@ export const EmployeeDetail: React.FC<EmployeeDetailProps> = ({
 
     // Calculate comparatio using original currency values
     return Math.round((newFullTimeSalary / salaryGradeMid) * 100);
-  }, [proposedRaise, employee.baseSalary, employee.baseSalaryUSD, employee.salaryGradeMid, analysis.salaryAnalysis.salaryGradeMid, employee.partTimeSalary, employee.fte]);
+  }, [proposedRaise, employee.baseSalary, employee.baseSalaryUSD, employee.salaryGradeMid, analysis.salaryAnalysis.salaryGradeMid, employee.salary, employee.fte]);
 
   // Calculate new segment based on new comparatio after proposed raise
   const newSegment = useMemo(() => {
@@ -477,7 +477,7 @@ export const EmployeeDetail: React.FC<EmployeeDetailProps> = ({
               <div className={styles.salaryInfo}>
                 <div className={styles.currentSalary}>
                   <span className={styles.label}>
-                    {employee.timeType === 'Part time' ? 'Salary:' : 'Base Salary:'}
+                    {'Base Salary:'}
                   </span>
                   <span className={styles.value}>
                     {(() => {

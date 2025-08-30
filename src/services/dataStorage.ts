@@ -12,7 +12,7 @@ export interface EmployeeRecord {
   baseSalary: number;
   baseSalaryUSD: number; // Converted to USD for comparison
   timeType?: string;
-  partTimeSalary?: number; // Full-time salary reference
+  salary?: number; // Full-time salary reference
   fte?: number; // Full-time equivalent factor
   comparatio: number;
   timeInRole: number; // months

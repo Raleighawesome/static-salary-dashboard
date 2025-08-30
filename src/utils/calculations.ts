@@ -255,8 +255,8 @@ export class EmployeeCalculations {
       employee['salary'] ||
       employee['annual_salary'] ||
       0;
-    const currentSalary = employee.partTimeSalary
-      ? employee.partTimeSalary
+    const currentSalary = employee.salary
+      ? employee.salary
       : (employee.fte && employee.fte > 0 ? baseValue / employee.fte : baseValue);
     
     const salaryGradeMin = employee.salaryGradeMin || 
