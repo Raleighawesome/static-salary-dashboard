@@ -11,6 +11,10 @@ export interface EmployeeRecord {
   currency: string;
   baseSalary: number;
   baseSalaryUSD: number; // Converted to USD for comparison
+  basePayAllCountries: number;
+  timeType?: string;
+  salary?: number;
+  fte?: number;
   comparatio: number;
   timeInRole: number; // months
   performanceRating?: string | number;

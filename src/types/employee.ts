@@ -9,8 +9,10 @@ export interface Employee {
   currency: string;
   baseSalary: number;
   baseSalaryUSD: number; // Converted for comparison
+  basePayAllCountries: number; // Primary salary field from "Base Pay All Countries"
   timeType?: string; // Full time, Part time
-  partTimeSalary?: number; // For part-time employees
+  salary?: number; // Full-time salary (for comparatio calculations)
+  fte?: number; // Full-time equivalent factor
   comparatio: number;
   timeInRole: number; // in months
   performanceRating?: number | string; // Optional, from performance sheet
@@ -50,8 +52,10 @@ export interface SalarySheetRow {
   country?: string;
   currency?: string;
   baseSalary?: number;
+  basePayAllCountries?: number; // Primary salary field from "Base Pay All Countries"
   timeType?: string; // Full time, Part time
-  partTimeSalary?: number; // For part-time employees
+  salary?: number; // Full-time salary (for comparatio calculations)
+  fte?: number; // Full-time equivalent factor
   comparatio?: number;
   salaryGradeMin?: number;
   salaryGradeMid?: number;
