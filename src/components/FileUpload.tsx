@@ -243,6 +243,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({
 
   return (
     <div className={styles['file-upload-container']}>
+      <h3>Step 2</h3>
       {/* Drag and Drop Zone */}
       <div
         className={`${styles['file-upload-zone']} ${dragActive ? styles.active : ''} ${disabled ? styles.disabled : ''}`}
@@ -370,30 +371,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({
         </div>
       )}
 
-      {/* Enhanced Instructions */}
-      <div className={styles['upload-instructions']}>
-        <h4>File Requirements:</h4>
-        <ul>
-          <li>Supported formats: CSV, XLSX, XLS</li>
-          <li>Maximum file size: {maxFileSize}MB</li>
-          <li>Required columns: Employee ID, Name</li>
-          <li>
-            <strong>Salary file:</strong> Must contain salary information (baseSalary, currency, etc.)
-          </li>
-          <li>
-            <strong>Performance file:</strong> Optional, contains performance ratings and metrics
-          </li>
-        </ul>
-        
-        <div className={styles['validation-info']}>
-          <h4>Validation Process:</h4>
-          <ul>
-            <li>✅ <strong>Success:</strong> File processed without issues</li>
-            <li>⚠️ <strong>Warning:</strong> File has minor issues but can be processed</li>
-            <li>❌ <strong>Error:</strong> File has critical issues and cannot be processed</li>
-          </ul>
-        </div>
-      </div>
+      
     </div>
   );
 };

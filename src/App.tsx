@@ -420,10 +420,11 @@ function App() {
             </div>
             <div className="view-header">
               <h2>📁 Load Employee Data</h2>
-              <p>Load employee data (stored locally, never transmitted)</p>
+              <p>Stored locally, never transmitted</p>
             </div>
 
             {/* Workday Instructions */}
+            <h3>Step 1</h3>
             <div className="workday-instructions">
               <h3>📋 Required Workday Reports</h3>
               <p>Please download these two spreadsheets from Workday. (Search for them in Workday, or use the links below)</p>
