@@ -268,7 +268,7 @@ export const FileUpload: React.FC<FileUploadProps> = ({
               disabled={disabled || isProcessing}
               className={styles['file-input']}
             />
-            <span className={styles['file-input-button']}>Choose Files</span>
+            <span className={styles['file-input-button']}>Load data</span>
           </label>
         </div>
       </div>

@@ -338,7 +338,7 @@ function App() {
               className={`nav-button ${currentView === 'upload' ? 'active' : ''}`}
               onClick={() => switchView('upload')}
             >
-              📁 Upload Files
+              📁 Load Data
             </button>
             <button
               className={`nav-button ${currentView === 'dashboard' ? 'active' : ''}`}
@@ -414,9 +414,13 @@ function App() {
       <main className={`app-main ${currentView === 'dashboard' ? 'dashboard-main' : ''}`}>
         {currentView === 'upload' ? (
           <div className="upload-view">
+            <div className="privacy-banner">
+              <span className="privacy-badge">Local-only (browser storage)</span>
+              <span className="privacy-note">Data is stored in browser sessionStorage/localStorage and never sent to a backend.</span>
+            </div>
             <div className="view-header">
-              <h2>📁 Upload Employee Data</h2>
-              <p>Upload your salary and performance files to get started. (Find them in Workday)</p>
+              <h2>📁 Load Employee Data</h2>
+              <p>Load employee data (stored locally, never transmitted)</p>
             </div>
 
             {/* Workday Instructions */}

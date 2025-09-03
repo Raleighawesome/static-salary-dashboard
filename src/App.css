@@ -210,6 +210,33 @@ body {
   padding: 2rem;
 }
 
+.privacy-banner {
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  background: #ecfeff;
+  border: 1px solid #06b6d4;
+  color: #0e7490;
+  padding: 0.75rem 1rem;
+  border-radius: 0.5rem;
+  margin-bottom: 1rem;
+}
+
+.privacy-badge {
+  background: #06b6d4;
+  color: white;
+  border-radius: 9999px;
+  padding: 0.25rem 0.75rem;
+  font-size: 0.75rem;
+  font-weight: 700;
+  text-transform: uppercase;
+  letter-spacing: 0.03em;
+}
+
+.privacy-note {
+  font-size: 0.9rem;
+}
+
 .dashboard-view {
   /* Dashboard component handles its own padding */
 }
