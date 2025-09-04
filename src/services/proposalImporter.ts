@@ -13,6 +13,8 @@ export interface ProposalData {
   name?: string;
   currentSalary?: number;
   currency?: string;
+  salaryRecommendation?: string;
+  adjustmentNotes?: string;
 }
 
 // Result of proposal import operation
@@ -40,23 +42,28 @@ const PROPOSAL_COLUMN_MAPPINGS: Record<string, keyof ProposalData> = {
   'employee id': 'employeeId',
   'emp_id': 'employeeId',
   'id': 'employeeId',
+  'associate id': 'employeeId',
+  'associate_id': 'employeeId',
   
   // Name for validation
   'employee full name': 'name',
   'name': 'name',
   'full_name': 'name',
   'employee_name': 'name',
+  'associate': 'name',
   
   // Proposed salary fields
   'proposed raise (percent)': 'proposedRaisePercent',
   'proposed_raise_percent': 'proposedRaisePercent',
   'raise_percent': 'proposedRaisePercent',
   'raise percentage': 'proposedRaisePercent',
+  'merit increase %': 'proposedRaisePercent',
   
   'proposed salary': 'proposedSalary',
   'proposed_salary': 'proposedSalary',
   'new_salary': 'proposedSalary',
   'new salary': 'proposedSalary',
+  'new base pay all countries': 'proposedSalary',
   
   'proposed comparatio': 'proposedComparatio',
   'proposed_comparatio': 'proposedComparatio',
@@ -67,15 +74,21 @@ const PROPOSAL_COLUMN_MAPPINGS: Record<string, keyof ProposalData> = {
   'proposed_raise': 'proposedRaise',
   'raise_amount': 'proposedRaise',
   'raise amount': 'proposedRaise',
+  'merit increase amount': 'proposedRaise',
   
   // Current salary for validation
   'base pay all countries': 'currentSalary',
   'base_salary': 'currentSalary',
   'current_salary': 'currentSalary',
   'salary': 'currentSalary',
+  'current base pay all countries': 'currentSalary',
   
   // Currency
   'currency': 'currency',
+
+  // Additional proposal details
+  'merit increase priority/recommendation': 'salaryRecommendation',
+  'salary adjustment notes': 'adjustmentNotes',
 };
 
 export class ProposalImporter {
@@ -299,6 +312,14 @@ export class ProposalImporter {
             (proposal.proposedRaise * (employee.baseSalary || 0) / (employee.baseSalaryUSD || 1));
           updatedEmployee.comparatio = Math.round((newSalaryOriginal / employee.salaryGradeMid) * 100);
         }
+      }
+
+      if (proposal.salaryRecommendation !== undefined) {
+        (updatedEmployee as any).salaryRecommendation = proposal.salaryRecommendation;
+      }
+
+      if (proposal.adjustmentNotes !== undefined) {
+        (updatedEmployee as any).adjustmentNotes = proposal.adjustmentNotes;
       }
 
       return updatedEmployee;

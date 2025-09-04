@@ -20,6 +20,8 @@ export interface Employee {
   proposedRaise: number;
   newSalary: number;
   percentChange: number;
+  salaryRecommendation?: string;
+  adjustmentNotes?: string;
   businessImpactScore?: number; // Manager input
   salaryGradeMin?: number;
   salaryGradeMid?: number;
@@ -57,6 +59,11 @@ export interface SalarySheetRow {
   salary?: number; // Full-time salary (for comparatio calculations)
   fte?: number; // Full-time equivalent factor
   comparatio?: number;
+  proposedRaise?: number;
+  newSalary?: number;
+  percentChange?: number;
+  salaryRecommendation?: string;
+  adjustmentNotes?: string;
   salaryGradeMin?: number;
   salaryGradeMid?: number;
   salaryGradeMax?: number;

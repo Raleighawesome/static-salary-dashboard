@@ -180,12 +180,22 @@ export class DataJoiner {
     employee.lastName = normalizedName.lastName;
 
     // Calculate comparatio using centralized logic
-    employee.comparatio = calculateComparatio(salaryData);
+    employee.comparatio = salaryData.comparatio ?? calculateComparatio(salaryData);
 
-    // Initialize raise-related fields
-    employee.proposedRaise = 0;
-    employee.newSalary = getDisplaySalary(salaryData);
-    employee.percentChange = 0;
+    // Initialize raise-related fields using provided data when available
+    const currentSalary = getDisplaySalary(salaryData);
+    employee.proposedRaise = salaryData.proposedRaise ?? 0;
+    employee.newSalary = salaryData.newSalary ?? (employee.proposedRaise ? currentSalary + employee.proposedRaise : currentSalary);
+    if (salaryData.percentChange !== undefined) {
+      employee.percentChange = salaryData.percentChange;
+    } else if (employee.proposedRaise && currentSalary) {
+      employee.percentChange = (employee.proposedRaise / currentSalary) * 100;
+    } else {
+      employee.percentChange = 0;
+    }
+
+    employee.salaryRecommendation = salaryData.salaryRecommendation;
+    employee.adjustmentNotes = salaryData.adjustmentNotes;
 
     // Set default retention risk if not provided
     if (!performanceData?.retentionRisk) {
@@ -272,9 +282,11 @@ export class DataJoiner {
           timeInRole: salaryRow.timeInRole || 0,
           performanceRating: performanceRow.performanceRating,
           retentionRisk: performanceRow.retentionRisk || 50,
-          proposedRaise: 0,
-          newSalary: salaryRow.baseSalary || 0,
-          percentChange: 0,
+          proposedRaise: salaryRow.proposedRaise ?? 0,
+          newSalary: salaryRow.newSalary ?? salaryRow.baseSalary || 0,
+          percentChange: salaryRow.percentChange ?? 0,
+          salaryRecommendation: salaryRow.salaryRecommendation,
+          adjustmentNotes: salaryRow.adjustmentNotes,
           businessImpactScore: performanceRow.businessImpactScore,
           salaryGradeMin: salaryRow.salaryGradeMin,
           salaryGradeMid: salaryRow.salaryGradeMid,
@@ -315,9 +327,11 @@ export class DataJoiner {
           // Preserve performance-related fields if the salary file already contained them
           performanceRating: (salaryRow as any).performanceRating,
           retentionRisk: (salaryRow as any).retentionRisk ?? 50, // Default medium risk
-          proposedRaise: 0,
-          newSalary: salaryRow.baseSalary || 0,
-          percentChange: 0,
+          proposedRaise: salaryRow.proposedRaise ?? 0,
+          newSalary: salaryRow.newSalary ?? salaryRow.baseSalary || 0,
+          percentChange: salaryRow.percentChange ?? 0,
+          salaryRecommendation: salaryRow.salaryRecommendation,
+          adjustmentNotes: salaryRow.adjustmentNotes,
           businessImpactScore: (salaryRow as any).businessImpactScore,
           salaryGradeMin: salaryRow.salaryGradeMin,
           salaryGradeMid: salaryRow.salaryGradeMid,

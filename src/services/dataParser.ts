@@ -37,6 +37,7 @@ const SALARY_COLUMN_MAPPINGS: Record<string, keyof SalarySheetRow> = {
   'employee id': 'employeeId',
   'employee number': 'employeeId',
   'employee_number': 'employeeId',
+  'associate id': 'employeeId',
   
   // Email variations
   'email': 'email',
@@ -51,6 +52,7 @@ const SALARY_COLUMN_MAPPINGS: Record<string, keyof SalarySheetRow> = {
   'full name': 'name',
   'employee full name': 'name',
   'employee_full_name': 'name',
+  'associate': 'name',
   'first_name': 'firstName',
   'firstname': 'firstName',
   'first name': 'firstName',
@@ -68,6 +70,7 @@ const SALARY_COLUMN_MAPPINGS: Record<string, keyof SalarySheetRow> = {
   // Primary salary field - Base Pay All Countries
   'base pay all countries': 'basePayAllCountries',
   'annual calculated base pay all countries': 'basePayAllCountries',
+  'current base pay all countries': 'basePayAllCountries',
   
   // Legacy salary information - RH format specific mappings
   'base_salary': 'baseSalary',
@@ -95,6 +98,7 @@ const SALARY_COLUMN_MAPPINGS: Record<string, keyof SalarySheetRow> = {
   
   // Comparatio - RH format specific
   'comparatio': 'comparatio',
+  'current compa-ratio': 'comparatio',
   
   // Time in role
   'time_in_role': 'timeInRole',
@@ -109,6 +113,7 @@ const SALARY_COLUMN_MAPPINGS: Record<string, keyof SalarySheetRow> = {
   'start_date': 'hireDate',
   'role_start_date': 'roleStartDate',
   'current_role_start': 'roleStartDate',
+  'hire date': 'hireDate',
   
   // Other RH format specific fields
   'last_raise_date': 'lastRaiseDate',
@@ -117,6 +122,13 @@ const SALARY_COLUMN_MAPPINGS: Record<string, keyof SalarySheetRow> = {
   
   // Time Type field - Full time, Part time
   'time type': 'timeType',
+  'current job profile': 'jobTitle',
+  'supervisory organization': 'managerName',
+  'merit increase priority/recommendation': 'salaryRecommendation',
+  'new base pay all countries': 'newSalary',
+  'merit increase amount': 'proposedRaise',
+  'merit increase %': 'percentChange',
+  'salary adjustment notes': 'adjustmentNotes',
   
   // FTE field for full-time equivalency
   'fte': 'fte',
@@ -664,8 +676,9 @@ export class DataParser {
                      // Handle numeric fields
            if (typeof value === 'string' && value !== '') {
              // Try to parse as number for numeric fields (excluding performanceRating which can be text)
-             const numericFields = ['baseSalary', 'basePayAllCountries', 'salary', 'fte', 'salaryGradeMin', 'salaryGradeMid', 
-                                  'salaryGradeMax', 'timeInRole', 'businessImpactScore', 'retentionRisk'];
+            const numericFields = ['baseSalary', 'basePayAllCountries', 'salary', 'fte', 'salaryGradeMin', 'salaryGradeMid',
+                                 'salaryGradeMax', 'timeInRole', 'businessImpactScore', 'retentionRisk', 'newSalary',
+                                 'proposedRaise', 'percentChange', 'comparatio'];
              
              if (numericFields.includes(mappedField as string)) {
                // Remove currency symbols, commas, quotes, and other formatting
@@ -705,8 +718,28 @@ export class DataParser {
                  value = 0; // Low retention risk
                }
                // Otherwise keep as original value (could be numeric or text)
-             }
-           }
+            }
+
+            // Extract manager name from supervisory organization
+            if (mappedField === 'managerName' && typeof value === 'string') {
+              const match = value.match(/\(([^)]+)\)/);
+              if (match) {
+                value = match[1].trim();
+              }
+            }
+
+            // Normalize hire date from DD-MM-YY to YYYY-MM-DD
+            if (mappedField === 'hireDate' && typeof value === 'string') {
+              const parts = value.split(/[-\/]/);
+              if (parts.length === 3) {
+                let [day, month, year] = parts;
+                if (year.length === 2) {
+                  year = `20${year}`;
+                }
+                value = `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+              }
+            }
+          }
           
           mappedRow[mappedField] = value;
         }
