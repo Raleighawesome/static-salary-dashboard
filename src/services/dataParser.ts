@@ -169,6 +169,34 @@ const SALARY_COLUMN_MAPPINGS: Record<string, keyof SalarySheetRow> = {
   'below range minimum': 'belowRangeMinimum',
   'below_range_minimum': 'belowRangeMinimum',
   'is_below_minimum': 'belowRangeMinimum',
+  
+  // Promotion-related fields
+  'has promotion': 'hasPromotion',
+  'promotion': 'hasPromotion',
+  'promoted': 'hasPromotion',
+  'promotion flag': 'hasPromotion',
+  'new job title': 'newJobTitle',
+  'promoted job title': 'newJobTitle',
+  'new title': 'newJobTitle',
+  'promotion title': 'newJobTitle',
+  'future job title': 'newJobTitle',
+  'new salary grade': 'newSalaryGrade',
+  'promoted salary grade': 'newSalaryGrade',
+  'new grade': 'newSalaryGrade',
+  'promotion grade': 'newSalaryGrade',
+  'future grade': 'newSalaryGrade',
+  'new salary range minimum': 'newSalaryGradeMin',
+  'new salary range midpoint': 'newSalaryGradeMid',
+  'new salary range maximum': 'newSalaryGradeMax',
+  'promotion type': 'promotionType',
+  'promotion category': 'promotionType',
+  'promotion justification': 'promotionJustification',
+  'promotion reason': 'promotionJustification',
+  'justification': 'promotionJustification',
+  'promotion notes': 'promotionJustification',
+  'promotion effective date': 'promotionEffectiveDate',
+  'effective date': 'promotionEffectiveDate',
+  'promotion date': 'promotionEffectiveDate',
 };
 
 const PERFORMANCE_COLUMN_MAPPINGS: Record<string, keyof PerformanceSheetRow> = {
@@ -267,6 +295,31 @@ const COMPENSATION_REVIEW_COLUMN_MAPPINGS: Record<string, keyof CompensationRevi
   'adjustment_notes': 'salaryAdjustmentNotes',
   'notes': 'salaryAdjustmentNotes',
   'comments': 'salaryAdjustmentNotes',
+  
+  // Promotion fields for compensation review
+  'has promotion': 'hasPromotion',
+  'promotion': 'hasPromotion',
+  'promoted': 'hasPromotion',
+  'promotion flag': 'hasPromotion',
+  'new job title': 'newJobTitle',
+  'promoted job title': 'newJobTitle',
+  'new title': 'newJobTitle',
+  'promotion title': 'newJobTitle',
+  'future job title': 'newJobTitle',
+  'new salary grade': 'newSalaryGrade',
+  'promoted salary grade': 'newSalaryGrade',
+  'new grade': 'newSalaryGrade',
+  'promotion grade': 'newSalaryGrade',
+  'future grade': 'newSalaryGrade',
+  'promotion type': 'promotionType',
+  'promotion category': 'promotionType',
+  'promotion justification': 'promotionJustification',
+  'promotion reason': 'promotionJustification',
+  'justification': 'promotionJustification',
+  'promotion notes': 'promotionJustification',
+  'promotion effective date': 'promotionEffectiveDate',
+  'effective date': 'promotionEffectiveDate',
+  'promotion date': 'promotionEffectiveDate',
 };
 
 export class DataParser {
@@ -708,7 +761,8 @@ export class DataParser {
            if (typeof value === 'string' && value !== '') {
              // Try to parse as number for numeric fields (excluding performanceRating which can be text)
              const numericFields = ['baseSalary', 'basePayAllCountries', 'salary', 'fte', 'salaryGradeMin', 'salaryGradeMid', 
-                                  'salaryGradeMax', 'timeInRole', 'businessImpactScore', 'retentionRisk', 'proposedRaise', 'newSalary', 'percentChange'];
+                                  'salaryGradeMax', 'timeInRole', 'businessImpactScore', 'retentionRisk', 'proposedRaise', 
+                                  'newSalary', 'percentChange', 'newSalaryGradeMin', 'newSalaryGradeMid', 'newSalaryGradeMax'];
              
              if (numericFields.includes(mappedField as string)) {
                // Remove currency symbols, commas, quotes, and other formatting
@@ -748,6 +802,61 @@ export class DataParser {
                  value = 0; // Low retention risk
                }
                // Otherwise keep as original value (could be numeric or text)
+             }
+             
+             // Handle hasPromotion boolean field - convert Yes/No/True/False to boolean
+             if (mappedField === 'hasPromotion') {
+               const lowerValue = value.toLowerCase().trim();
+               if (lowerValue === 'yes' || lowerValue === 'y' || lowerValue === 'true' || lowerValue === '1') {
+                 value = true;
+               } else if (lowerValue === 'no' || lowerValue === 'n' || lowerValue === 'false' || lowerValue === '0') {
+                 value = false;
+               } else {
+                 value = value !== '' ? true : false; // Non-empty string means promotion exists
+               }
+             }
+             
+             // Handle promotionType field - normalize promotion types
+             if (mappedField === 'promotionType') {
+               const lowerValue = value.toLowerCase().trim();
+               if (lowerValue.includes('vertical') || lowerValue.includes('up') || lowerValue.includes('level up')) {
+                 value = 'VERTICAL';
+               } else if (lowerValue.includes('lateral') || lowerValue.includes('same level')) {
+                 value = 'LATERAL';
+               } else if (lowerValue.includes('internal') || lowerValue.includes('within')) {
+                 value = 'INTERNAL';
+               } else if (lowerValue.includes('demotion') || lowerValue.includes('down')) {
+                 value = 'DEMOTION';
+               } else if (lowerValue !== '') {
+                 value = value.toUpperCase(); // Keep original value in uppercase
+               }
+             }
+             
+             // Handle date fields for promotion effective date
+             if (mappedField === 'promotionEffectiveDate') {
+               // Normalize various date formats to YYYY-MM-DD
+               if (value && typeof value === 'string') {
+                 const dateStr = value.trim();
+                 // Handle common date formats
+                 const parts = dateStr.split(/[-\/\.]/);
+                 if (parts.length === 3) {
+                   let [first, second, third] = parts;
+                   // If year is 2-digit, assume 20XX
+                   if (third.length === 2) {
+                     third = `20${third}`;
+                   } else if (first.length === 2) {
+                     first = `20${first}`;
+                   }
+                   // Try to determine format (US: MM/DD/YYYY, European: DD/MM/YYYY, ISO: YYYY-MM-DD)
+                   if (third.length === 4) {
+                     // MM/DD/YYYY or DD/MM/YYYY
+                     value = `${third}-${second.padStart(2, '0')}-${first.padStart(2, '0')}`;
+                   } else if (first.length === 4) {
+                     // YYYY-MM-DD
+                     value = `${first}-${second.padStart(2, '0')}-${third.padStart(2, '0')}`;
+                   }
+                 }
+               }
              }
            }
           

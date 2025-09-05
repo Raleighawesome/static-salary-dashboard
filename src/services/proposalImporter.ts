@@ -13,6 +13,16 @@ export interface ProposalData {
   name?: string;
   currentSalary?: number;
   currency?: string;
+  // Promotion-related fields
+  hasPromotion?: boolean;
+  newJobTitle?: string;
+  newSalaryGrade?: string;
+  promotionType?: string;
+  promotionJustification?: string;
+  promotionEffectiveDate?: string;
+  newSalaryGradeMin?: number;
+  newSalaryGradeMid?: number;
+  newSalaryGradeMax?: number;
 }
 
 // Result of proposal import operation
@@ -76,6 +86,34 @@ const PROPOSAL_COLUMN_MAPPINGS: Record<string, keyof ProposalData> = {
   
   // Currency
   'currency': 'currency',
+  
+  // Promotion fields
+  'has promotion': 'hasPromotion',
+  'promotion': 'hasPromotion',
+  'promoted': 'hasPromotion',
+  'promotion flag': 'hasPromotion',
+  'new job title': 'newJobTitle',
+  'promoted job title': 'newJobTitle',
+  'new title': 'newJobTitle',
+  'promotion title': 'newJobTitle',
+  'future job title': 'newJobTitle',
+  'new salary grade': 'newSalaryGrade',
+  'promoted salary grade': 'newSalaryGrade',
+  'new grade': 'newSalaryGrade',
+  'promotion grade': 'newSalaryGrade',
+  'future grade': 'newSalaryGrade',
+  'new salary range minimum': 'newSalaryGradeMin',
+  'new salary range midpoint': 'newSalaryGradeMid',
+  'new salary range maximum': 'newSalaryGradeMax',
+  'promotion type': 'promotionType',
+  'promotion category': 'promotionType',
+  'promotion justification': 'promotionJustification',
+  'promotion reason': 'promotionJustification',
+  'justification': 'promotionJustification',
+  'promotion notes': 'promotionJustification',
+  'promotion effective date': 'promotionEffectiveDate',
+  'effective date': 'promotionEffectiveDate',
+  'promotion date': 'promotionEffectiveDate',
 };
 
 export class ProposalImporter {
@@ -210,11 +248,26 @@ export class ProposalImporter {
       Object.entries(row).forEach(([csvColumn, value]) => {
         const mappedField = PROPOSAL_COLUMN_MAPPINGS[csvColumn.toLowerCase().trim()];
         if (mappedField && value !== null && value !== undefined && value !== '') {
-          if (mappedField === 'proposedSalary' || mappedField === 'proposedRaise' || mappedField === 'currentSalary') {
+          if (mappedField === 'proposedSalary' || mappedField === 'proposedRaise' || mappedField === 'currentSalary' ||
+              mappedField === 'newSalaryGradeMin' || mappedField === 'newSalaryGradeMid' || mappedField === 'newSalaryGradeMax') {
             // Parse numeric values
             const numericValue = this.parseNumericValue(value);
             if (numericValue !== null) {
               (proposal as any)[mappedField] = numericValue;
+            }
+          } else if (mappedField === 'hasPromotion') {
+            // Parse boolean values
+            const booleanValue = this.parseBooleanValue(value);
+            (proposal as any)[mappedField] = booleanValue;
+          } else if (mappedField === 'promotionType') {
+            // Normalize promotion type values
+            const normalizedType = this.normalizePromotionType(String(value).trim());
+            (proposal as any)[mappedField] = normalizedType;
+          } else if (mappedField === 'promotionEffectiveDate') {
+            // Parse and normalize date values
+            const normalizedDate = this.normalizeDateValue(String(value).trim());
+            if (normalizedDate) {
+              (proposal as any)[mappedField] = normalizedDate;
             }
           } else {
             // String values
@@ -249,6 +302,65 @@ export class ProposalImporter {
     const cleanValue = value.replace('%', '').trim();
     const parsed = parseFloat(cleanValue);
     return isNaN(parsed) ? null : parsed;
+  }
+
+  /**
+   * Parse boolean values from various string formats
+   */
+  private static parseBooleanValue(value: any): boolean {
+    if (typeof value === 'boolean') return value;
+    if (typeof value === 'string') {
+      const lowerValue = value.toLowerCase().trim();
+      return lowerValue === 'yes' || lowerValue === 'y' || lowerValue === 'true' || 
+             lowerValue === '1' || lowerValue === 'promoted' || lowerValue === 'promotion';
+    }
+    return false;
+  }
+
+  /**
+   * Normalize promotion type values
+   */
+  private static normalizePromotionType(value: string): string {
+    const lowerValue = value.toLowerCase().trim();
+    if (lowerValue.includes('vertical') || lowerValue.includes('up') || lowerValue.includes('level up')) {
+      return 'VERTICAL';
+    } else if (lowerValue.includes('lateral') || lowerValue.includes('same level')) {
+      return 'LATERAL';
+    } else if (lowerValue.includes('internal') || lowerValue.includes('within')) {
+      return 'INTERNAL';
+    } else if (lowerValue.includes('demotion') || lowerValue.includes('down')) {
+      return 'DEMOTION';
+    } else {
+      return value.toUpperCase(); // Keep original value in uppercase
+    }
+  }
+
+  /**
+   * Normalize date values to YYYY-MM-DD format
+   */
+  private static normalizeDateValue(value: string): string | null {
+    if (!value) return null;
+    
+    // Handle common date formats
+    const parts = value.split(/[-\/\.]/);
+    if (parts.length === 3) {
+      let [first, second, third] = parts;
+      // If year is 2-digit, assume 20XX
+      if (third.length === 2) {
+        third = `20${third}`;
+      } else if (first.length === 2) {
+        first = `20${first}`;
+      }
+      // Try to determine format (US: MM/DD/YYYY, European: DD/MM/YYYY, ISO: YYYY-MM-DD)
+      if (third.length === 4) {
+        // MM/DD/YYYY or DD/MM/YYYY
+        return `${third}-${second.padStart(2, '0')}-${first.padStart(2, '0')}`;
+      } else if (first.length === 4) {
+        // YYYY-MM-DD
+        return `${first}-${second.padStart(2, '0')}-${third.padStart(2, '0')}`;
+      }
+    }
+    return null;
   }
 
   /**
@@ -299,6 +411,60 @@ export class ProposalImporter {
             (proposal.proposedRaise * (employee.baseSalary || 0) / (employee.baseSalaryUSD || 1));
           updatedEmployee.comparatio = Math.round((newSalaryOriginal / employee.salaryGradeMid) * 100);
         }
+      }
+      
+      // Handle promotion data
+      if (proposal.hasPromotion !== undefined) {
+        updatedEmployee.hasPromotion = proposal.hasPromotion;
+        
+        // If promotion is true, preserve current job title as old job title
+        if (proposal.hasPromotion && employee.jobTitle && !updatedEmployee.oldJobTitle) {
+          updatedEmployee.oldJobTitle = employee.jobTitle;
+          updatedEmployee.oldSalaryGrade = employee.gradeLevel; // Preserve old grade
+        }
+      }
+      
+      // Update promotion-related fields
+      if (proposal.newJobTitle !== undefined) {
+        updatedEmployee.newJobTitle = proposal.newJobTitle;
+        updatedEmployee.hasPromotion = true; // Implicit promotion if new job title provided
+      }
+      
+      if (proposal.newSalaryGrade !== undefined) {
+        updatedEmployee.newSalaryGrade = proposal.newSalaryGrade;
+        updatedEmployee.hasPromotion = true; // Implicit promotion if new grade provided
+      }
+      
+      if (proposal.promotionType !== undefined) {
+        updatedEmployee.promotionType = proposal.promotionType as 'INTERNAL' | 'LATERAL' | 'VERTICAL' | 'DEMOTION';
+      }
+      
+      if (proposal.promotionJustification !== undefined) {
+        updatedEmployee.promotionJustification = proposal.promotionJustification;
+      }
+      
+      if (proposal.promotionEffectiveDate !== undefined) {
+        updatedEmployee.promotionEffectiveDate = proposal.promotionEffectiveDate;
+      }
+      
+      // Update new salary grade ranges if provided
+      if (proposal.newSalaryGradeMin !== undefined) {
+        updatedEmployee.newSalaryGradeMin = proposal.newSalaryGradeMin;
+      }
+      
+      if (proposal.newSalaryGradeMid !== undefined) {
+        updatedEmployee.newSalaryGradeMid = proposal.newSalaryGradeMid;
+        
+        // Recalculate comparatio based on new salary grade if promotion
+        if (updatedEmployee.hasPromotion && updatedEmployee.newSalary) {
+          const newSalaryOriginal = (employee.baseSalary || 0) + 
+            (proposal.proposedRaise || 0) * (employee.baseSalary || 0) / (employee.baseSalaryUSD || 1);
+          updatedEmployee.comparatio = Math.round((newSalaryOriginal / proposal.newSalaryGradeMid) * 100);
+        }
+      }
+      
+      if (proposal.newSalaryGradeMax !== undefined) {
+        updatedEmployee.newSalaryGradeMax = proposal.newSalaryGradeMax;
       }
 
       return updatedEmployee;

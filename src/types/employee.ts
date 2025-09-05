@@ -43,6 +43,18 @@ export interface Employee {
   // Compensation review fields
   meritRecommendation?: string;
   salaryAdjustmentNotes?: string;
+  // Promotion-related fields
+  hasPromotion?: boolean;
+  newJobTitle?: string;
+  newSalaryGrade?: string;
+  newSalaryGradeMin?: number;
+  newSalaryGradeMid?: number;
+  newSalaryGradeMax?: number;
+  promotionType?: 'INTERNAL' | 'LATERAL' | 'VERTICAL' | 'DEMOTION';
+  promotionJustification?: string;
+  promotionEffectiveDate?: string;
+  oldJobTitle?: string;
+  oldSalaryGrade?: string;
 }
 
 // Raw data from uploaded CSV files
@@ -78,6 +90,16 @@ export interface SalarySheetRow {
   managerFlag?: string;
   teamLeadFlag?: string;
   managementLevel?: string;
+  // Promotion-related fields (for data input)
+  hasPromotion?: boolean;
+  newJobTitle?: string;
+  newSalaryGrade?: string;
+  newSalaryGradeMin?: number;
+  newSalaryGradeMid?: number;
+  newSalaryGradeMax?: number;
+  promotionType?: string;
+  promotionJustification?: string;
+  promotionEffectiveDate?: string;
 }
 
 export interface PerformanceSheetRow {
@@ -97,11 +119,18 @@ export interface CompensationReviewSheetRow {
   meritRecommendation?: string; // Merit Increase Priority/Recommendation
   proposedRaise?: number; // Merit Increase Amount
   salaryAdjustmentNotes?: string; // Salary Adjustment Notes
+  // Promotion fields
+  hasPromotion?: boolean;
+  newJobTitle?: string;
+  newSalaryGrade?: string;
+  promotionType?: string;
+  promotionJustification?: string;
+  promotionEffectiveDate?: string;
 }
 
 // Policy violation types
 export interface PolicyViolation {
-  type: 'COMPARATIO_TOO_LOW' | 'RAISE_TOO_HIGH' | 'NO_RAISE_TOO_LONG' | 'BUDGET_EXCEEDED';
+  type: 'COMPARATIO_TOO_LOW' | 'RAISE_TOO_HIGH' | 'NO_RAISE_TOO_LONG' | 'BUDGET_EXCEEDED' | 'PROMOTION_INCREASE_TOO_HIGH' | 'INVALID_PROMOTION_PATH';
   severity: 'WARNING' | 'ERROR';
   message: string;
   employeeId?: string;
@@ -119,6 +148,8 @@ export interface DashboardMetrics {
   policyViolations: PolicyViolation[];
   employeesWithoutRaises: number;
   employeesAtRisk: number;
+  employeesWithPromotions: number;
+  totalPromotionRaises: number;
 }
 
 // Heat map data structure
