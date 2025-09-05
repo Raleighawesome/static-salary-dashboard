@@ -12,6 +12,7 @@ import { CurrencyConverter } from '../services/currencyConverter';
 import { PolicyValidator } from '../utils/policyValidation';
 import styles from './Dashboard.module.css';
 import { EmployeeCalculations } from '../utils/calculations';
+import { getDisplaySalary, getDisplaySalaryUSD, getComparatioSalary } from '../utils/salaryHelpers';
 
 interface DashboardProps {
   employeeData: any[]; // Will be properly typed when we have the Employee interface
@@ -157,6 +158,40 @@ export const Dashboard: React.FC<DashboardProps> = ({
             timeInRole = tenureInfo.timeInRoleMonths;
           }
 
+          // Calculate proposed comparatio using the same logic as EmployeeTable
+          let proposedComparatio = 0;
+          let hasProposedRaise = false;
+          
+          if (emp.proposedRaise && emp.proposedRaise > 0) {
+            hasProposedRaise = true;
+            
+            try {
+              const currentComparatioSalary = getComparatioSalary(emp);
+              const salaryGradeMid = emp.salaryGradeMid || 0;
+              
+              if (salaryGradeMid > 0 && currentComparatioSalary > 0) {
+                // Convert USD raise amount to local currency if needed
+                const displaySalary = getDisplaySalary(emp);
+                const displaySalaryUSD = getDisplaySalaryUSD(emp);
+                const currencyConversionRate = displaySalaryUSD > 0 ? displaySalary / displaySalaryUSD : 1;
+                const proposedRaiseLocalCurrency = emp.proposedRaise * currencyConversionRate;
+                
+                // For part-time employees, add the raise to their full-time equivalent for comparatio
+                let newComparatioSalary = currentComparatioSalary;
+                if (emp.timeType === 'Part time' && emp.fte && emp.fte > 0) {
+                  // Convert the actual raise to full-time equivalent
+                  newComparatioSalary = currentComparatioSalary + (proposedRaiseLocalCurrency / emp.fte);
+                } else {
+                  newComparatioSalary = currentComparatioSalary + proposedRaiseLocalCurrency;
+                }
+                
+                proposedComparatio = Math.round((newComparatioSalary / salaryGradeMid) * 100);
+              }
+            } catch (error) {
+              console.warn('Error calculating proposed comparatio for employee:', emp?.name || 'unknown', error);
+            }
+          }
+
           return {
             id: emp.employeeId || emp.email || `emp_${Date.now()}_${Math.random()}`,
             name: emp.name || 'Unknown Employee',
@@ -167,6 +202,8 @@ export const Dashboard: React.FC<DashboardProps> = ({
             proposedRaisePercent: isFinite(proposedRaisePercent) ? proposedRaisePercent : 0,
             timeSinceLastRaise: tenureInfo.lastRaiseMonthsAgo || 0,
             currentSalary: typeof emp.baseSalaryUSD === 'number' && emp.baseSalaryUSD > 0 ? emp.baseSalaryUSD : (emp.baseSalary || 0),
+            proposedComparatio: proposedComparatio,
+            hasProposedRaise: hasProposedRaise,
           };
         } catch (error) {
           console.error('Error processing employee metrics for:', emp?.name || 'unknown', error);

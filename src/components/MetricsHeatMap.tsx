@@ -12,6 +12,8 @@ interface EmployeeMetric {
   proposedRaisePercent: number;
   timeSinceLastRaise: number; // Months since last raise
   currentSalary?: number; // Add current salary for tooltip
+  proposedComparatio?: number; // Proposed new comparatio after raise
+  hasProposedRaise?: boolean; // Whether this employee has a proposed raise
 }
 
 interface MetricsHeatMapProps {
@@ -79,23 +81,7 @@ const METRIC_CONFIGS: Record<MetricType, MetricConfig> = {
   },
 };
 
-// Options for ModernSelect components - ordered as requested
-const METRIC_OPTIONS = [
-  'comparatio',
-  'timeSinceLastRaise', 
-  'performanceRating',
-  'timeInRole',
-  'proposedRaisePercent',
-  'retentionRisk'
-].map(key => ({
-  value: key,
-  label: METRIC_CONFIGS[key as MetricType].label,
-  icon: key === 'comparatio' ? '📊' : 
-        key === 'performanceRating' ? '⭐' : 
-        key === 'timeInRole' ? '⏰' : 
-        key === 'retentionRisk' ? '⚠️' : 
-        key === 'timeSinceLastRaise' ? '📅' : '💰'
-}));
+// METRIC_OPTIONS is now dynamic - see availableMetricOptions in component
 
 const SORT_OPTIONS = [
   { value: 'metric', label: 'By Metric Value', icon: '📈' },
@@ -118,6 +104,24 @@ export const MetricsHeatMap: React.FC<MetricsHeatMapProps> = ({
   const [sortBy, setSortBy] = useState<'name' | 'metric'>('metric');
   const [filterThreshold, setFilterThreshold] = useState<'all' | 'poor' | 'fair' | 'good' | 'excellent'>('all');
   const [hoveredEmployee, setHoveredEmployee] = useState<string | null>(null);
+
+  // Static metric options
+  const metricOptions = [
+    'comparatio',
+    'timeSinceLastRaise', 
+    'performanceRating',
+    'timeInRole',
+    'proposedRaisePercent',
+    'retentionRisk'
+  ].map(key => ({
+    value: key,
+    label: METRIC_CONFIGS[key as MetricType].label,
+    icon: key === 'comparatio' ? '📊' : 
+          key === 'performanceRating' ? '⭐' : 
+          key === 'timeInRole' ? '⏰' : 
+          key === 'retentionRisk' ? '⚠️' : 
+          key === 'timeSinceLastRaise' ? '📅' : '💰'
+  }));
 
   // Safe state update handlers to prevent crashes
   const handleMetricChange = useCallback((newMetric: string) => {
@@ -247,7 +251,13 @@ export const MetricsHeatMap: React.FC<MetricsHeatMapProps> = ({
       if (filterThreshold !== 'all') {
         filtered = filtered.filter(emp => {
           try {
-            const metricValue = emp[selectedMetric];
+            let metricValue;
+            if (selectedMetric === 'comparatio') {
+              // For comparatio, use proposed if available, otherwise current
+              metricValue = emp.proposedComparatio && emp.hasProposedRaise ? emp.proposedComparatio : emp.comparatio;
+            } else {
+              metricValue = emp[selectedMetric];
+            }
             if (typeof metricValue !== 'number' || isNaN(metricValue)) {
               return false; // Exclude employees with no valid data
             }
@@ -294,8 +304,14 @@ export const MetricsHeatMap: React.FC<MetricsHeatMapProps> = ({
             return nameA.localeCompare(nameB);
           } else {
             // Sort by metric value (descending for most metrics, ascending for retention risk)
-            const aVal = typeof a[selectedMetric] === 'number' ? a[selectedMetric] : 0;
-            const bVal = typeof b[selectedMetric] === 'number' ? b[selectedMetric] : 0;
+            let aVal, bVal;
+            if (selectedMetric === 'comparatio') {
+              aVal = a.proposedComparatio && a.hasProposedRaise ? a.proposedComparatio : a.comparatio;
+              bVal = b.proposedComparatio && b.hasProposedRaise ? b.proposedComparatio : b.comparatio;
+            } else {
+              aVal = typeof a[selectedMetric] === 'number' ? a[selectedMetric] : 0;
+              bVal = typeof b[selectedMetric] === 'number' ? b[selectedMetric] : 0;
+            }
             
             if (selectedMetric === 'timeSinceLastRaise') {
               // For time since last raise, sort employees with no data (-1) to the bottom
@@ -388,7 +404,7 @@ export const MetricsHeatMap: React.FC<MetricsHeatMapProps> = ({
             <ModernSelect
               value={selectedMetric}
               onChange={handleMetricChange}
-              options={METRIC_OPTIONS}
+              options={metricOptions}
               label="Metric"
               variant="compact"
               className={styles.metricSelect}
@@ -467,7 +483,25 @@ export const MetricsHeatMap: React.FC<MetricsHeatMapProps> = ({
               return null;
             }
 
-            const metricValue = typeof employee[selectedMetric] === 'number' ? employee[selectedMetric] : 0;
+            let metricValue;
+            let showProposedText = false;
+            let currentComparatioForDisplay = 0;
+            
+            if (selectedMetric === 'comparatio') {
+              if (employee.proposedComparatio && employee.hasProposedRaise) {
+                // Show proposed comparatio with current in parentheses
+                metricValue = employee.proposedComparatio;
+                currentComparatioForDisplay = employee.comparatio || 0;
+                showProposedText = true;
+              } else {
+                // Show current comparatio only
+                metricValue = employee.comparatio || 0;
+                showProposedText = false;
+              }
+            } else {
+              metricValue = typeof employee[selectedMetric] === 'number' ? employee[selectedMetric] : 0;
+              showProposedText = false;
+            }
             const colorInfo = getMetricColor(metricValue);
             
             // Calculate performance category inline
@@ -490,7 +524,7 @@ export const MetricsHeatMap: React.FC<MetricsHeatMapProps> = ({
             return (
               <div
                 key={employee.id}
-                className={`${styles.employeeCell} ${styles[category]} ${colorInfo.needsWhiteText ? styles.whiteText : ''}`}
+                className={`${styles.employeeCell} ${styles[category]} ${colorInfo.needsWhiteText ? styles.whiteText : ''} ${showProposedText ? styles.hasProposed : ''}`}
                 style={{
                   backgroundColor: colorInfo.backgroundColor,
                 }}
@@ -504,11 +538,21 @@ export const MetricsHeatMap: React.FC<MetricsHeatMapProps> = ({
                 onMouseEnter={() => setHoveredEmployee(employee.id)}
                 onMouseLeave={() => setHoveredEmployee(null)}
               >
+                {showProposedText && (
+                  <div className={styles.proposedHeader}>
+                    Proposed
+                  </div>
+                )}
                 <div className={styles.employeeName}>
                   {employee.name || 'Unknown'}
                 </div>
                 <div className={styles.employeeValue}>
                   {formatMetricValue(metricValue)}
+                  {showProposedText && currentComparatioForDisplay > 0 && (
+                    <span className={styles.currentComparatioText}>
+                      {` (${Math.round(currentComparatioForDisplay)}%)`}
+                    </span>
+                  )}
                 </div>
                 
                 {/* Tooltip */}
