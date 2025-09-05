@@ -61,6 +61,7 @@ type SortDirection = 'asc' | 'desc';
 type FilterType =
   | 'all'
   | 'withRaises'
+  | 'withPromotions'
   | 'highPerformers'
   | 'atRisk'
   | 'belowRange'
@@ -74,6 +75,7 @@ type FilterType =
 const FILTER_OPTIONS = [
   { value: 'all', label: 'All Employees', icon: '👥' },
   { value: 'withRaises', label: 'With Proposed Raises', icon: '💰' },
+  { value: 'withPromotions', label: 'With Promotions', icon: '🚀' },
   { value: 'highPerformers', label: 'High Performers', icon: '⭐' },
   { value: 'atRisk', label: 'At Risk', icon: '⚠️' },
   { value: 'belowRange', label: 'Below Salary Range', icon: '⬇️' },
@@ -516,6 +518,8 @@ export const EmployeeTable: React.FC<EmployeeTableProps> = ({
         switch (filterBy) {
           case 'withRaises':
             return emp.proposedRaise && emp.proposedRaise > 0;
+          case 'withPromotions':
+            return emp.hasPromotion === true;
           case 'highPerformers':
             if (typeof emp.performanceRating === 'string') {
               const ratingLower = emp.performanceRating.toLowerCase();
@@ -841,6 +845,14 @@ export const EmployeeTable: React.FC<EmployeeTableProps> = ({
                         {employee.timeType === 'Part time' && (
                           <span className={styles.partTimeIndicator}> (Part Time)</span>
                         )}
+                        {employee.hasPromotion && (
+                          <span 
+                            className={`${styles.promotionIndicator} ${styles.badge} ${styles.vertical}`} 
+                            title={`Promotion: ${employee.newJobTitle || 'New Position'}${employee.promotionType ? ` (${employee.promotionType})` : ''}`}
+                          >
+                            🚀
+                          </span>
+                        )}
                         {considerations.length > 0 && (
                           <span 
                             className={styles.considerationIndicator} 
@@ -864,7 +876,18 @@ export const EmployeeTable: React.FC<EmployeeTableProps> = ({
                       </div>
                     </div>
                   </td>
-                  <td>{employee.jobTitle || 'N/A'}</td>
+                  <td>
+                    <div className={styles.jobTitleCell}>
+                      <div className={styles.currentJobTitle}>
+                        {employee.jobTitle || 'N/A'}
+                      </div>
+                      {employee.hasPromotion && employee.newJobTitle && (
+                        <div className={styles.newJobTitle}>
+                          → {employee.newJobTitle}
+                        </div>
+                      )}
+                    </div>
+                  </td>
                   <td className={styles.salaryCell}>
                     {editingSalaryId === employee.employeeId ? (
                       <div className={styles.editingSalary}>

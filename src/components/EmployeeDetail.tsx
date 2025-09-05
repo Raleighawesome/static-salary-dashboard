@@ -888,6 +888,124 @@ export const EmployeeDetail: React.FC<EmployeeDetailProps> = ({
               </div>
             </div>
 
+            {/* Promotion Proposal Card - Show if employee has promotion */}
+            {employee.hasPromotion && (
+              <div className={styles.card}>
+                <h3 className={styles.cardTitle}>🚀 Promotion Proposal</h3>
+                <div className={styles.promotionInfo}>
+                  <div className={styles.promotionDetail}>
+                    <span className={styles.label}>Promotion Type:</span>
+                    <span className={`${styles.value} ${styles.promotionType}`}>
+                      {employee.promotionType || 'Not Specified'}
+                      {employee.promotionType && (
+                        <span className={`${styles.badge} ${styles[employee.promotionType.toLowerCase()]}`}>
+                          {employee.promotionType}
+                        </span>
+                      )}
+                    </span>
+                  </div>
+                  
+                  <div className={styles.promotionDetail}>
+                    <span className={styles.label}>Current Job Title:</span>
+                    <span className={styles.value}>
+                      {employee.oldJobTitle || employee.jobTitle || employee['Business Title'] || 'Not Available'}
+                    </span>
+                  </div>
+                  
+                  <div className={styles.promotionDetail}>
+                    <span className={styles.label}>New Job Title:</span>
+                    <span className={`${styles.value} ${styles.promotionHighlight}`}>
+                      {employee.newJobTitle || 'Not Specified'}
+                    </span>
+                  </div>
+                  
+                  {(employee.oldSalaryGrade || employee.newSalaryGrade) && (
+                    <>
+                      <div className={styles.promotionDetail}>
+                        <span className={styles.label}>Current Grade:</span>
+                        <span className={styles.value}>
+                          {employee.oldSalaryGrade || employee.gradeLevel || 'Not Available'}
+                        </span>
+                      </div>
+                      
+                      <div className={styles.promotionDetail}>
+                        <span className={styles.label}>New Grade:</span>
+                        <span className={`${styles.value} ${styles.promotionHighlight}`}>
+                          {employee.newSalaryGrade || 'Not Specified'}
+                        </span>
+                      </div>
+                    </>
+                  )}
+                  
+                  {employee.promotionEffectiveDate && (
+                    <div className={styles.promotionDetail}>
+                      <span className={styles.label}>Effective Date:</span>
+                      <span className={styles.value}>
+                        {EmployeeCalculations.formatDate(employee.promotionEffectiveDate)}
+                      </span>
+                    </div>
+                  )}
+                  
+                  {/* New Salary Grade Range - Show if promotion has new grade ranges */}
+                  {(employee.newSalaryGradeMin || employee.newSalaryGradeMid || employee.newSalaryGradeMax) && (
+                    <div className={styles.newSalaryRange}>
+                      <h4>New Salary Grade Range</h4>
+                      <div className={styles.rangeBar}>
+                        <div className={styles.rangeLabels}>
+                          <span>Min</span>
+                          <span>Midpoint</span>
+                          <span>Max</span>
+                        </div>
+                        <div className={styles.rangeVisual}>
+                          <div className={styles.rangeTrack}>
+                            {newSalary > 0 && employee.newSalaryGradeMin && employee.newSalaryGradeMax && (
+                              <div 
+                                className={`${styles.currentPosition} ${styles.promotionPosition}`}
+                                style={{
+                                  left: `${Math.max(0, Math.min(100, 
+                                    ((newSalary - (employee.newSalaryGradeMin || 0)) / 
+                                    ((employee.newSalaryGradeMax || 0) - (employee.newSalaryGradeMin || 0))) * 100
+                                  ))}%`
+                                }}
+                              />
+                            )}
+                          </div>
+                        </div>
+                        <div className={styles.rangeValues}>
+                          <span>{employee.newSalaryGradeMin ? formatCurrencyDisplay(employee.newSalaryGradeMin) : 'N/A'}</span>
+                          <span>{employee.newSalaryGradeMid ? formatCurrencyDisplay(employee.newSalaryGradeMid) : 'N/A'}</span>
+                          <span>{employee.newSalaryGradeMax ? formatCurrencyDisplay(employee.newSalaryGradeMax) : 'N/A'}</span>
+                        </div>
+                      </div>
+                      
+                      {/* New Comparatio based on new salary grade */}
+                      {employee.newSalaryGradeMid && newSalary > 0 && (
+                        <div className={styles.promotionDetail}>
+                          <span className={styles.label}>New Grade Comparatio:</span>
+                          <span className={styles.value}>
+                            {EmployeeCalculations.formatPercentage(Math.round((newSalary / employee.newSalaryGradeMid) * 100))}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+                  )}
+                </div>
+                
+                {/* Expandable Promotion Justification */}
+                {employee.promotionJustification && (
+                  <div className={styles.talentActionsContainer}>
+                    <details className={styles.expandableDetails} open>
+                      <summary className={styles.detailsSummary}>
+                        📋 Promotion Justification
+                      </summary>
+                      <div className={styles.talentActionsContent}>
+                        {employee.promotionJustification}
+                      </div>
+                    </details>
+                  </div>
+                )}
+              </div>
+            )}
 
             {/* 2. Performance & Impact Card */}
             <div className={styles.card}>
