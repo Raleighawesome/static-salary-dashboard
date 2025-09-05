@@ -259,12 +259,17 @@ export class DataProcessor {
       
       const conversions = employees
         .filter(emp => emp.currency && emp.currency !== 'USD')
-        .map(emp => ({
-          amount: emp.baseSalary,
-          fromCurrency: emp.currency,
-          toCurrency: 'USD',
-          id: emp.employeeId,
-        }));
+        .map(emp => {
+          // Use basePayAllCountries as the primary salary field for conversion
+          const salaryAmount = emp.basePayAllCountries || emp.baseSalary || 0;
+          console.log(`💱 Currency conversion for ${emp.employeeId}: ${salaryAmount} ${emp.currency} (using basePayAllCountries: ${emp.basePayAllCountries}, baseSalary: ${emp.baseSalary})`);
+          return {
+            amount: salaryAmount,
+            fromCurrency: emp.currency,
+            toCurrency: 'USD',
+            id: emp.employeeId,
+          };
+        });
 
       if (conversions.length > 0) {
         const conversionResults = await CurrencyConverter.convertBatch(conversions);
@@ -326,10 +331,11 @@ export class DataProcessor {
       enhanced.proposedRaise = enhanced.proposedRaise || 0;
       
       // Calculate newSalary in original currency (proposedRaise is in USD, convert to local)
-      const proposedRaiseLocal = enhanced.currency !== 'USD' && enhanced.baseSalary && enhanced.baseSalaryUSD 
-        ? (enhanced.proposedRaise * (enhanced.baseSalary / enhanced.baseSalaryUSD))
+      const currentSalary = enhanced.basePayAllCountries || enhanced.baseSalary || 0;
+      const proposedRaiseLocal = enhanced.currency !== 'USD' && currentSalary && enhanced.baseSalaryUSD 
+        ? (enhanced.proposedRaise * (currentSalary / enhanced.baseSalaryUSD))
         : enhanced.proposedRaise;
-      enhanced.newSalary = enhanced.baseSalary + proposedRaiseLocal;
+      enhanced.newSalary = currentSalary + proposedRaiseLocal;
       
       // Calculate percentage using USD values for consistency
       enhanced.percentChange = enhanced.baseSalaryUSD > 0 

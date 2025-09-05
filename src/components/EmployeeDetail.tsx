@@ -284,10 +284,11 @@ export const EmployeeDetail: React.FC<EmployeeDetailProps> = ({
 
   // Calculate new salary with proposed raise (convert USD raise to local currency)
   const newSalary = useMemo(() => {
-    const proposedRaiseLocal = employee.currency !== 'USD' && employee.baseSalary && employee.baseSalaryUSD && employee.baseSalaryUSD > 0
-      ? proposedRaise * (employee.baseSalary / employee.baseSalaryUSD)
+    const currentSalary = getDisplaySalary(employee);
+    const proposedRaiseLocal = employee.currency !== 'USD' && currentSalary && employee.baseSalaryUSD && employee.baseSalaryUSD > 0
+      ? proposedRaise * (currentSalary / employee.baseSalaryUSD)
       : proposedRaise;
-    return getDisplaySalary(employee) + proposedRaiseLocal;
+    return currentSalary + proposedRaiseLocal;
   }, [employee, proposedRaise]);
 
 
@@ -531,57 +532,59 @@ export const EmployeeDetail: React.FC<EmployeeDetailProps> = ({
               </div>
             </div>
 
-            {/* 2. Salary Grade Range Card */}
-            <div className={styles.card}>
-              <h3 className={styles.cardTitle}>📊 Salary Grade Range</h3>
-              <div className={styles.salaryRange}>
-                <div className={styles.rangeBar}>
-                  <div className={styles.rangeLabels}>
-                    <span>Min</span>
-                    <span>Midpoint</span>
-                    <span>Max</span>
-                  </div>
-                  <div className={styles.rangeVisual}>
-                    <div className={styles.rangeTrack}>
-                      <div 
-                        className={styles.currentPosition}
-                        style={{
-                          left: `${Math.max(0, Math.min(100, 
-                            ((getComparatioSalary(employee) - analysis.salaryAnalysis.salaryGradeMin) / 
-                            (analysis.salaryAnalysis.salaryGradeMax - analysis.salaryAnalysis.salaryGradeMin)) * 100
-                          ))}%`
-                        }}
-                      />
+            {/* 2. Salary Grade Range Card - Hidden for part-time employees (FTE < 1) */}
+            {(!employee.fte || employee.fte >= 1) && (
+              <div className={styles.card}>
+                <h3 className={styles.cardTitle}>📊 Salary Grade Range</h3>
+                <div className={styles.salaryRange}>
+                  <div className={styles.rangeBar}>
+                    <div className={styles.rangeLabels}>
+                      <span>Min</span>
+                      <span>Midpoint</span>
+                      <span>Max</span>
+                    </div>
+                    <div className={styles.rangeVisual}>
+                      <div className={styles.rangeTrack}>
+                        <div 
+                          className={styles.currentPosition}
+                          style={{
+                            left: `${Math.max(0, Math.min(100, 
+                              ((getComparatioSalary(employee) - analysis.salaryAnalysis.salaryGradeMin) / 
+                              (analysis.salaryAnalysis.salaryGradeMax - analysis.salaryAnalysis.salaryGradeMin)) * 100
+                            ))}%`
+                          }}
+                        />
+                      </div>
+                    </div>
+                    <div className={styles.rangeValues}>
+                      <span>{formatCurrencyDisplay(analysis.salaryAnalysis.salaryGradeMin)}</span>
+                      <span>{formatCurrencyDisplay(analysis.salaryAnalysis.salaryGradeMid)}</span>
+                      <span>{formatCurrencyDisplay(analysis.salaryAnalysis.salaryGradeMax)}</span>
                     </div>
                   </div>
-                  <div className={styles.rangeValues}>
-                    <span>{formatCurrencyDisplay(analysis.salaryAnalysis.salaryGradeMin)}</span>
-                    <span>{formatCurrencyDisplay(analysis.salaryAnalysis.salaryGradeMid)}</span>
-                    <span>{formatCurrencyDisplay(analysis.salaryAnalysis.salaryGradeMax)}</span>
-                  </div>
-                </div>
-                <div className={styles.rangeDetails}>
-                  <div className={styles.rangeDetail}>
-                    <span className={styles.label}>Position in Range:</span>
-                    <span className={`${styles.value} ${styles[analysis.salaryAnalysis.positionInRange.toLowerCase().replace(' ', '')]}`}>
-                      {analysis.salaryAnalysis.positionInRange}
-                    </span>
-                  </div>
-                  <div className={styles.rangeDetail}>
-                    <span className={styles.label}>Segment:</span>
-                    <span className={styles.value}>
-                      {employee.salaryRangeSegment || 'Not Available'}
-                    </span>
-                  </div>
-                  <div className={styles.rangeDetail}>
-                    <span className={styles.label}>Amount to next segment:</span>
-                    <span className={styles.value}>
-                      {formatCurrencyDisplay(analysis.salaryAnalysis.roomForGrowth)}
-                    </span>
+                  <div className={styles.rangeDetails}>
+                    <div className={styles.rangeDetail}>
+                      <span className={styles.label}>Position in Range:</span>
+                      <span className={`${styles.value} ${styles[analysis.salaryAnalysis.positionInRange.toLowerCase().replace(' ', '')]}`}>
+                        {analysis.salaryAnalysis.positionInRange}
+                      </span>
+                    </div>
+                    <div className={styles.rangeDetail}>
+                      <span className={styles.label}>Segment:</span>
+                      <span className={styles.value}>
+                        {employee.salaryRangeSegment || 'Not Available'}
+                      </span>
+                    </div>
+                    <div className={styles.rangeDetail}>
+                      <span className={styles.label}>Amount to next segment:</span>
+                      <span className={styles.value}>
+                        {formatCurrencyDisplay(analysis.salaryAnalysis.roomForGrowth)}
+                      </span>
+                    </div>
                   </div>
                 </div>
               </div>
-            </div>
+            )}
 
             {/* 3. Tenure & Experience Card */}
             <div className={styles.card}>
@@ -803,8 +806,9 @@ export const EmployeeDetail: React.FC<EmployeeDetailProps> = ({
                           const originalSalary = newSalary;
 
                           // Calculate USD equivalent of new salary
-                          const newSalaryUSD = employee.currency !== 'USD' && employee.baseSalary && employee.baseSalaryUSD && employee.baseSalary > 0
-                            ? (originalSalary * (employee.baseSalaryUSD / employee.baseSalary))
+                          const currentSalary = getDisplaySalary(employee);
+                          const newSalaryUSD = employee.currency !== 'USD' && currentSalary && employee.baseSalaryUSD && currentSalary > 0
+                            ? (originalSalary * (employee.baseSalaryUSD / currentSalary))
                             : originalSalary;
                           
                           // Always show USD first

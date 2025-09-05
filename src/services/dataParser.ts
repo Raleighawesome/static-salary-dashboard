@@ -1161,6 +1161,44 @@ export class DataParser {
         if (finalType === 'compensation-review') {
           const compensationReviewData = this.mapColumns(rawData, COMPENSATION_REVIEW_COLUMN_MAPPINGS);
           
+          // Post-process to handle USD merit increase amount override
+          compensationReviewData.forEach((row, index) => {
+            const originalRow = rawData[index];
+            
+            // First, check if we have a valid Merit Increase Amount
+            let proposedRaise = row.proposedRaise;
+            
+            // If Merit Increase Amount is zero/null, ignore it
+            if (proposedRaise === 0 || proposedRaise === null || proposedRaise === undefined) {
+              proposedRaise = undefined;
+            }
+            
+            // Look for Merit Increase Amount (USD) field
+            const usdField = Object.keys(originalRow).find(key => 
+              key.toLowerCase().trim() === 'merit increase amount (usd)'
+            );
+            
+            if (usdField) {
+              const usdValue = originalRow[usdField];
+              
+              if (usdValue != null && usdValue !== '' && usdValue !== '0' && usdValue !== 0) {
+                // Clean and parse USD value
+                const cleanValue = typeof usdValue === 'string' 
+                  ? usdValue.replace(/["']/g, '').replace(/[$,£€¥₹]/g, '').replace(/[^\d.-]/g, '').trim()
+                  : String(usdValue);
+                
+                const numValue = parseFloat(cleanValue);
+                if (!isNaN(numValue) && numValue !== 0) {
+                  proposedRaise = numValue;
+                  console.log(`💰 USD override: ${usdValue} -> ${numValue} for employee ${row.employeeId}`);
+                }
+              }
+            }
+            
+            // Update the proposedRaise value
+            row.proposedRaise = proposedRaise;
+          });
+          
           // Validate required columns for compensation review data
           const requiredColumnValidation = this.validateRequiredColumns(compensationReviewData, 'compensation-review');
           if (!requiredColumnValidation.isValid) {

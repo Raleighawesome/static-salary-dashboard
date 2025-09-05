@@ -471,34 +471,6 @@ function App() {
                 <p><strong>After each report generates:</strong> Click the red <strong>"export to excel"</strong> button in the top right corner</p>
               </div>
             </div>
-
-            {/* Upload Order Instructions */}
-            <div className="upload-order-instructions">
-              <h3>📋 Upload Order (Important)</h3>
-              <div className="upload-sequence">
-                <div className="upload-step required">
-                  <span className="step-number">1</span>
-                  <div className="step-content">
-                    <h4>🏢 Compensation Report <span className="required-badge">Required</span></h4>
-                    <p>Upload this first to create your employee records with salary data</p>
-                  </div>
-                </div>
-                <div className="upload-step optional">
-                  <span className="step-number">2</span>
-                  <div className="step-content">
-                    <h4>💰 Compensation Review <span className="optional-badge">Optional</span></h4>
-                    <p>Upload if you have merit recommendations and salary adjustments to add</p>
-                  </div>
-                </div>
-                <div className="upload-step optional">
-                  <span className="step-number">3</span>
-                  <div className="step-content">
-                    <h4>⭐ Performance/Talent Assessment <span className="optional-badge">Optional</span></h4>
-                    <p>Upload if you have performance ratings and talent data to add</p>
-                  </div>
-                </div>
-              </div>
-            </div>
             
             <FileUpload
               onFileUpload={handleFileUpload}
