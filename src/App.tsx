@@ -284,6 +284,10 @@ function App() {
       await DataStorageService.resetAllData();
       TempFieldStorageService.clearAllTempChanges();
       
+      // Clear all localStorage data related to this app
+      localStorage.removeItem('salary_dashboard_temp_changes');
+      localStorage.removeItem('currency-rates-cache');
+      
       // Reset component state
       setProcessedEmployees([]);
       setUploadedFiles([]);
