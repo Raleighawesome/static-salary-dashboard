@@ -871,6 +871,20 @@ export const EmployeeDetail: React.FC<EmployeeDetailProps> = ({
                     </ul>
                   </div>
                 )}
+
+                {/* Salary Adjustment Notes */}
+                {employee.salaryAdjustmentNotes && (
+                  <div className={styles.talentActionsContainer}>
+                    <details className={styles.expandableDetails} open>
+                      <summary className={styles.detailsSummary}>
+                        📝 Salary Adjustment Notes
+                      </summary>
+                      <div className={styles.talentActionsContent}>
+                        {employee.salaryAdjustmentNotes}
+                      </div>
+                    </details>
+                  </div>
+                )}
               </div>
             </div>
 
