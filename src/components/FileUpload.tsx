@@ -1,6 +1,7 @@
 import React, { useState, useCallback } from 'react';
 import type { FileUploadResult } from '../types/employee';
 import { DataParser } from '../services/dataParser';
+import { DataProcessor } from '../services/dataProcessor';
 import styles from './FileUpload.module.css';
 
 interface FileUploadProps {
@@ -13,7 +14,7 @@ interface FileUploadProps {
 
 interface UploadedFile {
   file: File;
-  type: 'salary' | 'performance' | 'unknown';
+  type: 'salary' | 'performance' | 'compensation-review' | 'unknown';
   status: 'pending' | 'processing' | 'success' | 'error' | 'warning';
   result?: FileUploadResult;
   error?: string;
@@ -65,12 +66,24 @@ export const FileUpload: React.FC<FileUploadProps> = ({
   }, [acceptedTypes, maxFileSize]);
 
   // Determine file type based on name
-  const determineFileType = useCallback((fileName: string): 'salary' | 'performance' | 'unknown' => {
-    const lowerName = fileName.toLowerCase();
+  const determineFileType = useCallback((fileName: string): 'salary' | 'performance' | 'compensation-review' | 'unknown' => {
+    const lowerName = fileName.toLowerCase().replace(/[_-]/g, ' '); // Replace underscores and dashes with spaces
+    // Check for compensation review first (more specific)
+    if (lowerName.includes('compensation review') || 
+        lowerName.includes('merit increase') || 
+        lowerName.includes('salary review') ||
+        lowerName.includes('salary adjustment')) {
+      return 'compensation-review';
+    }
     if (lowerName.includes('salary') || lowerName.includes('compensation') || lowerName.includes('pay')) {
       return 'salary';
     }
-    if (lowerName.includes('performance') || lowerName.includes('review') || lowerName.includes('rating')) {
+    if (lowerName.includes('performance') || 
+        lowerName.includes('review') || 
+        lowerName.includes('rating') ||
+        lowerName.includes('talent assessment') ||
+        lowerName.includes('calibration') ||
+        (lowerName.includes('talent') && lowerName.includes('assessment'))) {
       return 'performance';
     }
     return 'unknown';
@@ -124,6 +137,9 @@ export const FileUpload: React.FC<FileUploadProps> = ({
             : f
         ));
 
+        // Validate upload order
+        const orderValidation = DataProcessor.validateUploadOrder(uploadedFile.type);
+        
         // Process the file
         const result = await processFile(uploadedFile.file);
         
@@ -132,6 +148,30 @@ export const FileUpload: React.FC<FileUploadProps> = ({
         let validationSummary = '';
         let errorDetails: string[] = [];
         let canProceed = true;
+
+        // Check for upload order suggestions (informational only)
+        if (!orderValidation.isValidOrder) {
+          // For compensation-review without existing salary data, show helpful info but don't block
+          if (uploadedFile.type === 'compensation-review') {
+            if (status === 'success') {
+              status = 'warning';
+              validationSummary = `⚠️ Compensation Review uploaded without base salary data`;
+            }
+            errorDetails = [
+              '💡 Note: Compensation Review files work best when uploaded after Salary data',
+              '',
+              '📋 Recommended workflow:',
+              '1. Upload Salary/Compensation Report first (creates employee records)',
+              '2. Upload Compensation Review (adds merit recommendations - optional)',
+              '3. Upload Performance data (adds ratings - optional)',
+              '',
+              'This file will be processed, but the merit recommendations may not apply to any employees yet.'
+            ];
+          } else {
+            // For other file types, show suggestions in error details
+            errorDetails = [...orderValidation.suggestions];
+          }
+        }
 
         if (result.errors && result.errors.length > 0) {
           const criticalErrors = result.errors.filter(err => 
@@ -145,17 +185,22 @@ export const FileUpload: React.FC<FileUploadProps> = ({
             status = 'error';
             canProceed = false;
             validationSummary = `${criticalErrors.length} error${criticalErrors.length > 1 ? 's' : ''} found`;
-          } else if (warnings.length > 0) {
+          } else if (warnings.length > 0 && status !== 'warning') {
             status = 'warning';
             canProceed = true;
             validationSummary = `${warnings.length} warning${warnings.length > 1 ? 's' : ''} found`;
           }
 
-          errorDetails = result.errors;
+          errorDetails = [...errorDetails, ...result.errors];
         }
 
         if (status === 'success') {
           validationSummary = `✅ ${result.validRows}/${result.rowCount} rows processed successfully`;
+          
+          // Add helpful next steps for successful uploads
+          if (orderValidation.suggestions.length > 0) {
+            errorDetails = [...errorDetails, '', '💡 Next Steps:', ...orderValidation.suggestions];
+          }
         }
         
         // Update with result

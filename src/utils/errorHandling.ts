@@ -155,9 +155,12 @@ export class ErrorHandler {
 
     // Check for required columns with flexible mapping
     const missingColumns = opts.requiredColumns.filter(col => {
+      console.log(`🔍 Processing required column: "${col}" (type: ${typeof col})`);
+      console.log(`📋 Available columns:`, columns.slice(0, 10));
+      
       if (col === 'employeeId') {
         // Check for various employee ID column names
-        return !columns.some(dataCol => {
+        const found = columns.some(dataCol => {
           const normalizedCol = dataCol.toLowerCase().trim();
           return normalizedCol.includes('employee') && normalizedCol.includes('id') ||
                  normalizedCol.includes('employee') && normalizedCol.includes('number') ||
@@ -166,20 +169,45 @@ export class ErrorHandler {
                  normalizedCol === 'employeeid' ||
                  normalizedCol === 'emp_id';
         });
+        console.log(`🔍 employeeId found: ${found}`);
+        return !found;
       }
       if (col === 'name') {
         // Check for various name column variations
-        return !columns.some(dataCol => {
+        const found = columns.some(dataCol => {
           const normalizedCol = dataCol.toLowerCase().trim();
           return normalizedCol.includes('name') ||
                  normalizedCol === 'worker' ||
                  normalizedCol.includes('employee') && normalizedCol.includes('full');
         });
+        console.log(`🔍 name found: ${found}`);
+        return !found;
+      }
+      if (col === 'basePayAllCountries') {
+        console.log(`🔍 Checking basePayAllCountries against columns:`, columns.map(c => `"${c.toLowerCase().trim()}"`));
+        // Check for various base pay column variations
+        const found = columns.some(dataCol => {
+          const normalizedCol = dataCol.toLowerCase().trim();
+          console.log(`  🔍 Checking "${normalizedCol}" against basePayAllCountries patterns`);
+          const match1 = normalizedCol === 'base pay all countries';
+          const match2 = normalizedCol === 'annual calculated base pay all countries';
+          const match3 = normalizedCol === 'current base pay all countries';
+          const match4 = (normalizedCol.includes('base') && normalizedCol.includes('pay') && normalizedCol.includes('all') && normalizedCol.includes('countries'));
+          console.log(`    - exact match "base pay all countries": ${match1}`);
+          console.log(`    - annual calculated: ${match2}`);
+          console.log(`    - current base pay: ${match3}`);
+          console.log(`    - contains all keywords: ${match4}`);
+          return match1 || match2 || match3 || match4;
+        });
+        console.log(`🔍 basePayAllCountries found: ${found}`);
+        return !found;
       }
       // Default fallback for other columns
-      return !columns.some(dataCol => 
+      const found = columns.some(dataCol => 
         dataCol.toLowerCase().includes(col.toLowerCase())
       );
+      console.log(`🔍 ${col} found (fallback): ${found}`);
+      return !found;
     });
 
     if (missingColumns.length > 0) {

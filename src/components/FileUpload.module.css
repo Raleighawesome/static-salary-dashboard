@@ -178,6 +178,11 @@
   color: #2a4365;
 }
 
+.file-type[data-type="compensation-review"] {
+  background-color: #fbb6ce;
+  color: #702459;
+}
+
 .file-size {
   font-size: 14px;
   color: #718096;

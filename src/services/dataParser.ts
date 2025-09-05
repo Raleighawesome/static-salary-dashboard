@@ -4,6 +4,7 @@ import { ErrorHandler } from '../utils/errorHandling';
 import type { 
   SalarySheetRow, 
   PerformanceSheetRow, 
+  CompensationReviewSheetRow,
   FileUploadResult,
   ValidationResult 
 } from '../types/employee';
@@ -11,6 +12,7 @@ import type {
 // Required columns for different file types
 const REQUIRED_SALARY_COLUMNS = ['employeeId', 'name', 'basePayAllCountries'];
 const REQUIRED_PERFORMANCE_COLUMNS = ['employeeId', 'name'];
+const REQUIRED_COMPENSATION_REVIEW_COLUMNS = ['employeeId'];
 
 // Workday-specific metadata patterns to ignore
 const WORKDAY_METADATA_PATTERNS = [
@@ -229,6 +231,44 @@ const PERFORMANCE_COLUMN_MAPPINGS: Record<string, keyof PerformanceSheetRow> = {
   'movement readiness': 'movementReadiness',
 };
 
+const COMPENSATION_REVIEW_COLUMN_MAPPINGS: Record<string, keyof CompensationReviewSheetRow> = {
+  // Employee identification
+  'employee_id': 'employeeId',
+  'employeeid': 'employeeId',
+  'emp_id': 'employeeId',
+  'id': 'employeeId',
+  'employee id': 'employeeId',
+  'employee number': 'employeeId',
+  'employee_number': 'employeeId',
+  'associate id': 'employeeId',
+  'associate_id': 'employeeId',
+  'asscociate id': 'employeeId', // Handle typo in source column name
+  
+  // Merit recommendation
+  'merit increase priority/recommendation': 'meritRecommendation',
+  'merit_increase_priority/recommendation': 'meritRecommendation',
+  'merit increase priority': 'meritRecommendation',
+  'merit_increase_priority': 'meritRecommendation',
+  'merit recommendation': 'meritRecommendation',
+  'merit_recommendation': 'meritRecommendation',
+  
+  // Merit increase amount (maps to proposedRaise)
+  'merit increase amount': 'proposedRaise',
+  'merit_increase_amount': 'proposedRaise',
+  'merit amount': 'proposedRaise',
+  'merit_amount': 'proposedRaise',
+  'increase amount': 'proposedRaise',
+  'increase_amount': 'proposedRaise',
+  
+  // Salary adjustment notes
+  'salary adjustment notes': 'salaryAdjustmentNotes',
+  'salary_adjustment_notes': 'salaryAdjustmentNotes',
+  'adjustment notes': 'salaryAdjustmentNotes',
+  'adjustment_notes': 'salaryAdjustmentNotes',
+  'notes': 'salaryAdjustmentNotes',
+  'comments': 'salaryAdjustmentNotes',
+};
+
 export class DataParser {
   
   // Auto-clean Workday exports by removing metadata and empty rows
@@ -324,9 +364,11 @@ export class DataParser {
   // Validate that required columns are present after mapping
   private static validateRequiredColumns(
     mappedData: any[], 
-    fileType: 'salary' | 'performance'
+    fileType: 'salary' | 'performance' | 'compensation-review'
   ): { isValid: boolean; missingColumns: string[]; errors: string[] } {
-    const requiredColumns = fileType === 'salary' ? REQUIRED_SALARY_COLUMNS : REQUIRED_PERFORMANCE_COLUMNS;
+    const requiredColumns = fileType === 'salary' ? REQUIRED_SALARY_COLUMNS : 
+                        fileType === 'performance' ? REQUIRED_PERFORMANCE_COLUMNS : 
+                        REQUIRED_COMPENSATION_REVIEW_COLUMNS;
     const errors: string[] = [];
     const missingColumns: string[] = [];
     
@@ -646,6 +688,7 @@ export class DataParser {
     });
   }
 
+
   // Map column names to standard field names
   private static mapColumns<T>(
     data: any[], 
@@ -665,7 +708,7 @@ export class DataParser {
            if (typeof value === 'string' && value !== '') {
              // Try to parse as number for numeric fields (excluding performanceRating which can be text)
              const numericFields = ['baseSalary', 'basePayAllCountries', 'salary', 'fte', 'salaryGradeMin', 'salaryGradeMid', 
-                                  'salaryGradeMax', 'timeInRole', 'businessImpactScore', 'retentionRisk'];
+                                  'salaryGradeMax', 'timeInRole', 'businessImpactScore', 'retentionRisk', 'proposedRaise', 'newSalary', 'percentChange'];
              
              if (numericFields.includes(mappedField as string)) {
                // Remove currency symbols, commas, quotes, and other formatting
@@ -817,10 +860,48 @@ export class DataParser {
     return results;
   }
 
+  // Validate compensation review data
+  private static validateCompensationReviewData(data: CompensationReviewSheetRow[]): ValidationResult[] {
+    const results: ValidationResult[] = [];
+    
+    data.forEach((row, index) => {
+      const errors: string[] = [];
+      const warnings: string[] = [];
+      
+      // Required fields validation - Employee ID is required
+      if (!row.employeeId) {
+        errors.push('Employee ID is required');
+      }
+      
+      // Data type validation for proposedRaise
+      if (row.proposedRaise !== undefined && row.proposedRaise !== null) {
+        if (typeof row.proposedRaise !== 'number' || row.proposedRaise < 0) {
+          warnings.push('Merit increase amount should be a positive number');
+        }
+      }
+      
+      // Text field validation
+      if (row.meritRecommendation !== undefined && 
+          typeof row.meritRecommendation === 'string' && 
+          row.meritRecommendation.trim() === '') {
+        warnings.push('Merit recommendation cannot be empty');
+      }
+      
+      results.push({
+        isValid: errors.length === 0,
+        errors,
+        warnings,
+        employeeId: row.employeeId || `Row ${index + 1}`,
+      });
+    });
+    
+    return results;
+  }
+
   // Main parsing function with comprehensive error handling
   public static async parseFile(
     file: File, 
-    expectedType: 'salary' | 'performance' | 'unknown'
+    expectedType: 'salary' | 'performance' | 'compensation-review' | 'unknown'
   ): Promise<FileUploadResult> {
     try {
       // Step 1: Pre-validation of file
@@ -910,7 +991,22 @@ export class DataParser {
       }
       
       // Step 3: Validate data structure
-      const structureValidation = ErrorHandler.validateDataStructure(rawData, file.name);
+      // Determine required columns based on expected file type
+      let requiredColumnsForValidation: string[];
+      if (expectedType === 'salary') {
+        requiredColumnsForValidation = REQUIRED_SALARY_COLUMNS;
+      } else if (expectedType === 'performance') {
+        requiredColumnsForValidation = REQUIRED_PERFORMANCE_COLUMNS;
+      } else if (expectedType === 'compensation-review') {
+        requiredColumnsForValidation = REQUIRED_COMPENSATION_REVIEW_COLUMNS;
+      } else {
+        // For unknown type, use the most lenient requirements (just employeeId)
+        requiredColumnsForValidation = ['employeeId'];
+      }
+      
+      const structureValidation = ErrorHandler.validateDataStructure(rawData, file.name, {
+        requiredColumns: requiredColumnsForValidation
+      });
       
       if (!structureValidation.isValid) {
         const errorMessages = structureValidation.errors.map(e => e.message);
@@ -930,7 +1026,7 @@ export class DataParser {
       // Step 4: Map columns and validate based on expected type
       let mappedData: any[] = [];
       let validationResults: ValidationResult[] = [];
-      let finalType: 'salary' | 'performance' | 'unknown' = expectedType;
+      let finalType: 'salary' | 'performance' | 'compensation-review' | 'unknown' = expectedType;
       
       // Use detected format if type is unknown
       if (expectedType === 'unknown') {
@@ -1060,6 +1156,29 @@ export class DataParser {
           
           validationResults = this.validatePerformanceData(performanceData);
           mappedData = performanceData;
+        }
+        
+        if (finalType === 'compensation-review') {
+          const compensationReviewData = this.mapColumns(rawData, COMPENSATION_REVIEW_COLUMN_MAPPINGS);
+          
+          // Validate required columns for compensation review data
+          const requiredColumnValidation = this.validateRequiredColumns(compensationReviewData, 'compensation-review');
+          if (!requiredColumnValidation.isValid) {
+            return {
+              fileName: file.name,
+              fileType: 'compensation-review',
+              rowCount: rawData.length + cleaningResult.removedRows,
+              validRows: 0,
+              errors: [
+                ...requiredColumnValidation.errors,
+                ...workdayAnalysis.suggestions.map(s => `Info: ${s}`)
+              ],
+              data: [],
+            };
+          }
+          
+          validationResults = this.validateCompensationReviewData(compensationReviewData);
+          mappedData = compensationReviewData;
         }
         
       } catch (mappingError) {

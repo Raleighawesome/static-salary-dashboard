@@ -41,6 +41,8 @@ export interface EmployeeRecord {
   managerFlag?: string;
   teamLeadFlag?: string;
   managementLevel?: string;
+  meritRecommendation?: string;
+  salaryAdjustmentNotes?: string;
 }
 
 export interface SessionData {
@@ -59,6 +61,12 @@ export interface SessionData {
       uploadTime: number;
     };
     performanceFile?: {
+      name: string;
+      size: number;
+      rowCount: number;
+      uploadTime: number;
+    };
+    compensationReviewFile?: {
       name: string;
       size: number;
       rowCount: number;

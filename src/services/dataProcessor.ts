@@ -7,8 +7,10 @@ import type {
   FileUploadResult, 
   Employee, 
   SalarySheetRow, 
-  PerformanceSheetRow 
+  PerformanceSheetRow,
+  CompensationReviewSheetRow 
 } from '../types/employee';
+import { CompensationReviewImporter } from './compensationReviewImporter';
 
 export interface ProcessingResult {
   employees: Employee[];
@@ -33,6 +35,7 @@ export interface ProcessingOptions extends JoinOptions {
 export class DataProcessor {
   private static salaryData: SalarySheetRow[] = [];
   private static performanceData: PerformanceSheetRow[] = [];
+  private static compensationReviewData: CompensationReviewSheetRow[] = [];
   private static processedEmployees: Employee[] = [];
 
   // Process a single uploaded file
@@ -45,6 +48,9 @@ export class DataProcessor {
 
     } else if (fileResult.fileType === 'performance') {
       this.performanceData = fileResult.data as PerformanceSheetRow[];
+
+    } else if (fileResult.fileType === 'compensation-review') {
+      this.compensationReviewData = fileResult.data as CompensationReviewSheetRow[];
 
     } else {
       // Unknown type - try to determine based on data content
@@ -146,6 +152,28 @@ export class DataProcessor {
         warnings.push('No performance data provided - using default values');
       }
 
+      // Merge compensation review data if available
+      if (this.compensationReviewData.length > 0) {
+        console.log(`📊 Merging ${this.compensationReviewData.length} compensation review records`);
+        
+        // Validate compensation review data before merging
+        const validationResult = CompensationReviewImporter.validateForMerge(this.compensationReviewData);
+        
+        if (validationResult.warnings.length > 0) {
+          warnings.push(...validationResult.warnings);
+        }
+        
+        if (validationResult.errors.length > 0) {
+          errors.push(...validationResult.errors);
+        } else {
+          // Merge the compensation review data
+          employees = CompensationReviewImporter.mergeCompensationReviewData(
+            employees,
+            this.compensationReviewData
+          );
+        }
+      }
+
       // Additional processing and validation
       employees = await this.enhanceEmployeeData(employees, options);
 
@@ -194,6 +222,8 @@ export class DataProcessor {
           managerFlag: emp.managerFlag,
           teamLeadFlag: emp.teamLeadFlag,
           managementLevel: emp.managementLevel,
+          meritRecommendation: emp.meritRecommendation,
+          salaryAdjustmentNotes: emp.salaryAdjustmentNotes,
         })));
       }
 
@@ -398,6 +428,7 @@ export class DataProcessor {
   public static clearAllData(): void {
     this.salaryData = [];
     this.performanceData = [];
+    this.compensationReviewData = [];
     this.processedEmployees = [];
 
   }
@@ -406,13 +437,56 @@ export class DataProcessor {
   public static getProcessingStatus(): {
     hasSalaryData: boolean;
     hasPerformanceData: boolean;
+    hasCompensationReviewData: boolean;
     processedEmployeeCount: number;
   } {
     return {
       hasSalaryData: this.salaryData.length > 0,
       hasPerformanceData: this.performanceData.length > 0,
+      hasCompensationReviewData: this.compensationReviewData.length > 0,
       processedEmployeeCount: this.processedEmployees.length,
     };
+  }
+
+  // Validate upload order for file types
+  public static validateUploadOrder(fileType: string): {
+    isValidOrder: boolean;
+    warnings: string[];
+    suggestions: string[];
+  } {
+    const warnings: string[] = [];
+    const suggestions: string[] = [];
+    const status = this.getProcessingStatus();
+
+    if (fileType === 'compensation-review') {
+      if (!status.hasSalaryData && status.processedEmployeeCount === 0) {
+        warnings.push('Compensation Review works best when uploaded after Salary data');
+        suggestions.push('💡 For best results:');
+        suggestions.push('1. Upload your Salary/Compensation Report first to create employee records');
+        suggestions.push('2. Then upload this Compensation Review file to add merit recommendations');
+        suggestions.push('');
+        suggestions.push('Note: Compensation Review files are optional and enhance existing employee data');
+        return { isValidOrder: false, warnings, suggestions };
+      }
+    }
+
+    if (fileType === 'performance') {
+      if (!status.hasSalaryData && status.processedEmployeeCount === 0) {
+        warnings.push('Performance files should be uploaded after Salary/Compensation data');
+        suggestions.push('1. Upload your Salary/Compensation Report first to create employee records');
+        suggestions.push('2. Then upload this Performance file to add performance ratings');
+        return { isValidOrder: false, warnings, suggestions };
+      }
+    }
+
+    // Optimal order suggestions
+    if (fileType === 'salary') {
+      suggestions.push('✅ Perfect! Upload Salary/Compensation data first');
+      suggestions.push('📋 Next: Upload Compensation Review (if you have merit recommendations)');
+      suggestions.push('📊 Finally: Upload Performance data (if you have performance ratings)');
+    }
+
+    return { isValidOrder: true, warnings, suggestions };
   }
 
   // Re-process data with new options
@@ -424,9 +498,11 @@ export class DataProcessor {
   public static getProcessingStatistics(): {
     salaryRecords: number;
     performanceRecords: number;
+    compensationReviewRecords: number;
     processedEmployees: number;
     averageComparatio: number;
     employeesWithPerformanceData: number;
+    employeesWithCompensationReview: number;
     currencyDistribution: Record<string, number>;
     countryDistribution: Record<string, number>;
   } {
@@ -437,6 +513,7 @@ export class DataProcessor {
     let totalComparatio = 0;
     let comparatioCount = 0;
     let employeesWithPerformanceData = 0;
+    let employeesWithCompensationReview = 0;
 
     employees.forEach(emp => {
       // Currency distribution
@@ -459,14 +536,21 @@ export class DataProcessor {
       if (emp.performanceRating) {
         employeesWithPerformanceData++;
       }
+
+      // Compensation review data tracking
+      if (emp.meritRecommendation || emp.salaryAdjustmentNotes) {
+        employeesWithCompensationReview++;
+      }
     });
 
     return {
       salaryRecords: this.salaryData.length,
       performanceRecords: this.performanceData.length,
+      compensationReviewRecords: this.compensationReviewData.length,
       processedEmployees: employees.length,
       averageComparatio: comparatioCount > 0 ? Math.round(totalComparatio / comparatioCount) : 0,
       employeesWithPerformanceData,
+      employeesWithCompensationReview,
       currencyDistribution,
       countryDistribution,
     };

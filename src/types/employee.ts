@@ -40,6 +40,9 @@ export interface Employee {
   managerFlag?: string;
   teamLeadFlag?: string;
   managementLevel?: string;
+  // Compensation review fields
+  meritRecommendation?: string;
+  salaryAdjustmentNotes?: string;
 }
 
 // Raw data from uploaded CSV files
@@ -89,6 +92,13 @@ export interface PerformanceSheetRow {
   proposedTalentActions?: string;
 }
 
+export interface CompensationReviewSheetRow {
+  employeeId?: string; // Associate ID
+  meritRecommendation?: string; // Merit Increase Priority/Recommendation
+  proposedRaise?: number; // Merit Increase Amount
+  salaryAdjustmentNotes?: string; // Salary Adjustment Notes
+}
+
 // Policy violation types
 export interface PolicyViolation {
   type: 'COMPARATIO_TOO_LOW' | 'RAISE_TOO_HIGH' | 'NO_RAISE_TOO_LONG' | 'BUDGET_EXCEEDED';
@@ -122,11 +132,11 @@ export interface HeatMapData {
 // File upload types
 export interface FileUploadResult {
   fileName: string;
-  fileType: 'salary' | 'performance' | 'unknown';
+  fileType: 'salary' | 'performance' | 'compensation-review' | 'unknown';
   rowCount: number;
   validRows: number;
   errors: string[];
-  data: SalarySheetRow[] | PerformanceSheetRow[];
+  data: SalarySheetRow[] | PerformanceSheetRow[] | CompensationReviewSheetRow[];
 }
 
 // Currency conversion

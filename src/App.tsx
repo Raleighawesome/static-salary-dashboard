@@ -75,6 +75,17 @@ function App() {
               });
             }
             
+            if (currentSession.fileMetadata.compensationReviewFile) {
+              reconstructedFiles.push({
+                fileName: currentSession.fileMetadata.compensationReviewFile.name,
+                fileType: 'compensation-review',
+                rowCount: currentSession.fileMetadata.compensationReviewFile.rowCount,
+                validRows: currentSession.fileMetadata.compensationReviewFile.rowCount,
+                errors: [],
+                data: []
+              });
+            }
+            
             setUploadedFiles(reconstructedFiles);
           }
           
@@ -133,6 +144,14 @@ function App() {
           }),
           ...(result.fileType === 'performance' && {
             performanceFile: {
+              name: result.fileName,
+              size: new Blob([JSON.stringify(result.data)]).size, // Estimate file size
+              rowCount: result.rowCount,
+              uploadTime: Date.now(),
+            }
+          }),
+          ...(result.fileType === 'compensation-review' && {
+            compensationReviewFile: {
               name: result.fileName,
               size: new Blob([JSON.stringify(result.data)]).size, // Estimate file size
               rowCount: result.rowCount,
@@ -450,6 +469,34 @@ function App() {
               <div className="export-instruction">
                 <span className="export-icon">📤</span>
                 <p><strong>After each report generates:</strong> Click the red <strong>"export to excel"</strong> button in the top right corner</p>
+              </div>
+            </div>
+
+            {/* Upload Order Instructions */}
+            <div className="upload-order-instructions">
+              <h3>📋 Upload Order (Important)</h3>
+              <div className="upload-sequence">
+                <div className="upload-step required">
+                  <span className="step-number">1</span>
+                  <div className="step-content">
+                    <h4>🏢 Compensation Report <span className="required-badge">Required</span></h4>
+                    <p>Upload this first to create your employee records with salary data</p>
+                  </div>
+                </div>
+                <div className="upload-step optional">
+                  <span className="step-number">2</span>
+                  <div className="step-content">
+                    <h4>💰 Compensation Review <span className="optional-badge">Optional</span></h4>
+                    <p>Upload if you have merit recommendations and salary adjustments to add</p>
+                  </div>
+                </div>
+                <div className="upload-step optional">
+                  <span className="step-number">3</span>
+                  <div className="step-content">
+                    <h4>⭐ Performance/Talent Assessment <span className="optional-badge">Optional</span></h4>
+                    <p>Upload if you have performance ratings and talent data to add</p>
+                  </div>
+                </div>
               </div>
             </div>
             
