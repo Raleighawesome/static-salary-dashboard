@@ -154,16 +154,9 @@ export class CurrencyConverter {
       return cachedRate;
     }
 
-    // TIER 2: Check public file and trigger API update if stale (24+ hours)
-    try {
-      const publicRate = await this.getPublicFileRate(from, to);
-      if (publicRate) {
-        await this.cacheRate(cacheKey, publicRate);
-        return publicRate;
-      }
-    } catch (error) {
-      console.warn(`⚠️ Public file rate fetch failed for ${from} → ${to}:`, error);
-    }
+    // TIER 2: Skip public file check to prevent browser download issues
+    // (Disabled to prevent unknown file downloads on refresh)
+    console.log('📋 Skipping public file check, proceeding to API fetch');
 
     // TIER 3: Try direct API call (fallback if public file failed)
     try {
@@ -328,30 +321,6 @@ export class CurrencyConverter {
     return null;
   }
 
-  // Fetch rates from public file
-  private static async getPublicFileRates(): Promise<{ rates: Record<string, number>; lastUpdated: number } | null> {
-    try {
-      const response = await fetch('/currency-rates.json');
-      if (!response.ok) {
-        console.warn('⚠️ Public currency rates file not found');
-        return null;
-      }
-      
-      const data = await response.json();
-      if (!data.rates || !data.lastUpdated) {
-        console.warn('⚠️ Invalid public currency rates file format');
-        return null;
-      }
-      
-      return {
-        rates: data.rates,
-        lastUpdated: data.lastUpdated
-      };
-    } catch (error) {
-      console.warn('⚠️ Failed to fetch public currency rates:', error);
-      return null;
-    }
-  }
 
   // Check if public rates are fresh (< 24 hours old)
   private static isPublicRatesFresh(lastUpdated: number): boolean {
@@ -435,25 +404,15 @@ export class CurrencyConverter {
         }
       }
       
-      // If no fresh local cache, try public file
-      if (!publicData) {
-        publicData = await this.getPublicFileRates();
-        
-        if (publicData && !this.isPublicRatesFresh(publicData.lastUpdated)) {
-          console.log(`🕒 Public rates are stale (${Math.round((Date.now() - publicData.lastUpdated) / (1000 * 60 * 60))}h old), updating...`);
-          
-          // Trigger update but don't wait for it - use stale data for now
-          this.updatePublicRatesFile().catch(err => 
-            console.warn('⚠️ Background rate update failed:', err)
-          );
-        }
-      }
+      
+      // Skip public file data processing to prevent download issues
+      console.log('📋 Using localStorage cache only, no public file access');
       
       if (!publicData || !publicData.rates) {
         return null;
       }
       
-      // Calculate rate from public data
+      // Calculate rate from cached data
       const fromRate = publicData.rates[fromCurrency] || publicData.rates[fromCurrency.toUpperCase()];
       const toRate = publicData.rates[toCurrency] || publicData.rates[toCurrency.toUpperCase()];
       
@@ -470,7 +429,7 @@ export class CurrencyConverter {
       
       return null;
     } catch (error) {
-      console.warn('⚠️ Error accessing public file rates:', error);
+      console.warn('⚠️ Error accessing cached currency rates:', error);
       return null;
     }
   }

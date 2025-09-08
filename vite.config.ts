@@ -51,10 +51,24 @@ export default defineConfig({
     ]
   },
   
+  // Development server configuration
+  server: {
+    port: 5173,
+    host: true,
+    open: false, // Don't auto-open browser
+    cors: true,
+    // Prevent automatic downloads
+    middlewareMode: false,
+    // Configure MIME types properly
+    fs: {
+      strict: true
+    }
+  },
   
   // Preview configuration for testing static build
   preview: {
     port: 4173,
-    host: true
+    host: true,
+    open: false // Don't auto-open browser
   }
 })
