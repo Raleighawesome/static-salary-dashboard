@@ -359,18 +359,25 @@ export const EmployeeTable: React.FC<EmployeeTableProps> = ({
     const newOriginalSalary = newSalary;
     const newUSDSalary = newSalary * conversionRate;
     
-    // Recalculate comparatio based on new original currency salary
-    const newComparatio = employee.salaryGradeMid > 0 
-      ? Math.round((newOriginalSalary / employee.salaryGradeMid) * 100)
-      : 0;
+    // Recalculate comparatio using centralized helper and effective salary logic
+    const newComparatio = (() => {
+      const updatedForComparatio = {
+        ...employee,
+        // Keep these in sync so display salary and comparatio salary align
+        basePayAllCountries: newOriginalSalary,
+        baseSalary: newOriginalSalary,
+      };
+      return calculateComparatio(updatedForComparatio);
+    })();
     
 
     
-    // Update employee data with new base salary values only
+    // Update employee data with new base salary values and display salary
     // Do NOT modify proposed raise when updating current salary
     onEmployeeUpdate(employee.employeeId, {
       baseSalary: newOriginalSalary,
       baseSalaryUSD: newUSDSalary,
+      basePayAllCountries: newOriginalSalary,
       comparatio: newComparatio,
     });
     

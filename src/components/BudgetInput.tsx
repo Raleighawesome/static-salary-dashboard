@@ -183,7 +183,8 @@ export const BudgetInput: React.FC<BudgetInputProps> = ({
                   className={`${styles.budgetInput} ${validationError ? styles.error : ''}`}
                   disabled={!isEditing}
                   min="0"
-                  step="1000"
+                  // Allow any positive numeric value, including decimals
+                  step="any"
                 />
                 
                 <button
