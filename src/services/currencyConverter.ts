@@ -322,13 +322,6 @@ export class CurrencyConverter {
   }
 
 
-  // Check if public rates are fresh (< 24 hours old)
-  private static isPublicRatesFresh(lastUpdated: number): boolean {
-    const age = Date.now() - lastUpdated;
-    const maxAge = 24 * 60 * 60 * 1000; // 24 hours
-    return age < maxAge;
-  }
-
   // Update public rates file with fresh API data
   public static async updatePublicRatesFile(): Promise<boolean> {
     try {
@@ -382,57 +375,6 @@ export class CurrencyConverter {
     }
   }
 
-  // Get rate from public file or trigger update if stale
-  private static async getPublicFileRate(
-    fromCurrency: string,
-    toCurrency: string
-  ): Promise<ExchangeRate | null> {
-    try {
-      // First check localStorage cache (fallback for file writing limitation)
-      const localCache = localStorage.getItem('currency-rates-cache');
-      let publicData = null;
-      
-      if (localCache) {
-        try {
-          const cachedData = JSON.parse(localCache);
-          if (this.isPublicRatesFresh(cachedData.lastUpdated)) {
-            publicData = cachedData;
-            console.log(`📁 Using localStorage cached rates (${Math.round((Date.now() - cachedData.lastUpdated) / (1000 * 60 * 60))}h old)`);
-          }
-        } catch (e) {
-          console.warn('⚠️ Invalid localStorage currency cache');
-        }
-      }
-      
-      
-      // Skip public file data processing to prevent download issues
-      console.log('📋 Using localStorage cache only, no public file access');
-      
-      if (!publicData || !publicData.rates) {
-        return null;
-      }
-      
-      // Calculate rate from cached data
-      const fromRate = publicData.rates[fromCurrency] || publicData.rates[fromCurrency.toUpperCase()];
-      const toRate = publicData.rates[toCurrency] || publicData.rates[toCurrency.toUpperCase()];
-      
-      if (fromRate && toRate) {
-        const rate = toRate / fromRate;
-        return {
-          fromCurrency,
-          toCurrency,
-          rate,
-          timestamp: publicData.lastUpdated,
-          source: 'cache',
-        };
-      }
-      
-      return null;
-    } catch (error) {
-      console.warn('⚠️ Error accessing cached currency rates:', error);
-      return null;
-    }
-  }
 
   // Cache an exchange rate (both memory and IndexedDB)
   private static async cacheRate(cacheKey: string, rate: ExchangeRate): Promise<void> {

@@ -29,6 +29,7 @@ export interface Employee {
   lastRaiseDate?: string;
   departmentCode?: string;
   jobTitle?: string;
+  gradeLevel?: string; // Current salary grade/level from HR data
   managerId?: string;
   managerName?: string;
   futuretalent?: string;
