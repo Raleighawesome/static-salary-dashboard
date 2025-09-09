@@ -282,6 +282,14 @@ export const EmployeeDetail: React.FC<EmployeeDetailProps> = ({
     return EmployeeCalculations.formatCurrency(amount, displayCurrency);
   }, [budgetCurrency]);
 
+  // Format number without currency symbol for range values
+  const formatRangeValue = useCallback((amount: number) => {
+    return amount.toLocaleString('en-US', {
+      minimumFractionDigits: 0,
+      maximumFractionDigits: 0,
+    });
+  }, []);
+
   // Calculate new salary with proposed raise (convert USD raise to local currency)
   const newSalary = useMemo(() => {
     const currentSalary = getDisplaySalary(employee);
@@ -557,9 +565,9 @@ export const EmployeeDetail: React.FC<EmployeeDetailProps> = ({
                       </div>
                     </div>
                     <div className={styles.rangeValues}>
-                      <span>{formatCurrencyDisplay(analysis.salaryAnalysis.salaryGradeMin)}</span>
-                      <span>{formatCurrencyDisplay(analysis.salaryAnalysis.salaryGradeMid)}</span>
-                      <span>{formatCurrencyDisplay(analysis.salaryAnalysis.salaryGradeMax)}</span>
+                      <span>{formatRangeValue(analysis.salaryAnalysis.salaryGradeMin)}</span>
+                      <span>{formatRangeValue(analysis.salaryAnalysis.salaryGradeMid)}</span>
+                      <span>{formatRangeValue(analysis.salaryAnalysis.salaryGradeMax)}</span>
                     </div>
                   </div>
                   <div className={styles.rangeDetails}>
@@ -972,9 +980,9 @@ export const EmployeeDetail: React.FC<EmployeeDetailProps> = ({
                           </div>
                         </div>
                         <div className={styles.rangeValues}>
-                          <span>{employee.newSalaryGradeMin ? formatCurrencyDisplay(employee.newSalaryGradeMin) : 'N/A'}</span>
-                          <span>{employee.newSalaryGradeMid ? formatCurrencyDisplay(employee.newSalaryGradeMid) : 'N/A'}</span>
-                          <span>{employee.newSalaryGradeMax ? formatCurrencyDisplay(employee.newSalaryGradeMax) : 'N/A'}</span>
+                          <span>{employee.newSalaryGradeMin ? formatRangeValue(employee.newSalaryGradeMin) : 'N/A'}</span>
+                          <span>{employee.newSalaryGradeMid ? formatRangeValue(employee.newSalaryGradeMid) : 'N/A'}</span>
+                          <span>{employee.newSalaryGradeMax ? formatRangeValue(employee.newSalaryGradeMax) : 'N/A'}</span>
                         </div>
                       </div>
                       
