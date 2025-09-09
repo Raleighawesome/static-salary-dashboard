@@ -61,7 +61,6 @@ type SortDirection = 'asc' | 'desc';
 type FilterType =
   | 'all'
   | 'withRaises'
-  | 'withPromotions'
   | 'highPerformers'
   | 'atRisk'
   | 'belowRange'
@@ -75,7 +74,6 @@ type FilterType =
 const FILTER_OPTIONS = [
   { value: 'all', label: 'All Employees', icon: '👥' },
   { value: 'withRaises', label: 'With Proposed Raises', icon: '💰' },
-  { value: 'withPromotions', label: 'With Promotions', icon: '🚀' },
   { value: 'highPerformers', label: 'High Performers', icon: '⭐' },
   { value: 'atRisk', label: 'At Risk', icon: '⚠️' },
   { value: 'belowRange', label: 'Below Salary Range', icon: '⬇️' },
@@ -525,8 +523,6 @@ export const EmployeeTable: React.FC<EmployeeTableProps> = ({
         switch (filterBy) {
           case 'withRaises':
             return emp.proposedRaise && emp.proposedRaise > 0;
-          case 'withPromotions':
-            return emp.hasPromotion === true;
           case 'highPerformers':
             if (typeof emp.performanceRating === 'string') {
               const ratingLower = emp.performanceRating.toLowerCase();
