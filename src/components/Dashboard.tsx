@@ -204,6 +204,7 @@ export const Dashboard: React.FC<DashboardProps> = ({
             currentSalary: typeof emp.baseSalaryUSD === 'number' && emp.baseSalaryUSD > 0 ? emp.baseSalaryUSD : (emp.baseSalary || 0),
             proposedComparatio: proposedComparatio,
             hasProposedRaise: hasProposedRaise,
+            jobTitle: emp.jobTitle || emp.businessTitle || emp.title || '',
           };
         } catch (error) {
           console.error('Error processing employee metrics for:', emp?.name || 'unknown', error);

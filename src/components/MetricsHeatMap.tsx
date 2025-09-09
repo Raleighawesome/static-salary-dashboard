@@ -14,6 +14,7 @@ interface EmployeeMetric {
   currentSalary?: number; // Add current salary for tooltip
   proposedComparatio?: number; // Proposed new comparatio after raise
   hasProposedRaise?: boolean; // Whether this employee has a proposed raise
+  jobTitle?: string; // Job title for displaying trainee indicator
 }
 
 interface MetricsHeatMapProps {
@@ -545,6 +546,9 @@ export const MetricsHeatMap: React.FC<MetricsHeatMapProps> = ({
                 )}
                 <div className={styles.employeeName}>
                   {employee.name || 'Unknown'}
+                  {employee.jobTitle && employee.jobTitle.toLowerCase() === 'trainee' && (
+                    <div className={styles.traineeIndicator}>trainee</div>
+                  )}
                 </div>
                 <div className={styles.employeeValue}>
                   {formatMetricValue(metricValue)}

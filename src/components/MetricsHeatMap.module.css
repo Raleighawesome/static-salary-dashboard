@@ -269,6 +269,15 @@
   line-height: 1.2;
 }
 
+.traineeIndicator {
+  font-size: 0.7rem;
+  font-weight: 400;
+  color: #6b7280;
+  font-style: italic;
+  margin-top: 0.1rem;
+  text-transform: lowercase;
+}
+
 .employeeValue {
   font-weight: 700;
   color: #374151;
