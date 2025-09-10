@@ -1,5 +1,6 @@
 import type { Employee, PolicyViolation } from '../types/employee';
 import { PolicyValidator } from '../utils/policyValidation';
+import { EmployeeCalculations } from '../utils/calculations';
 
 // Export configuration interface
 export interface ExportConfig {
@@ -320,20 +321,14 @@ export class CSVExporter {
       enriched.managerFlag = enriched.managerId ? 'No' : 'No'; // Default not a manager
       enriched.teamLeadFlag = 'No'; // Default not a team lead
 
-      // Calculate tenure information
-      if (employee.hireDate) {
-        const hireDate = new Date(employee.hireDate);
-        const now = new Date();
-        const tenureMonths = Math.floor((now.getTime() - hireDate.getTime()) / (1000 * 60 * 60 * 24 * 30.44));
-        enriched.totalTenure = tenureMonths;
-      }
-
-      if (employee.roleStartDate) {
-        const roleStart = new Date(employee.roleStartDate);
-        const now = new Date();
-        const roleMonths = Math.floor((now.getTime() - roleStart.getTime()) / (1000 * 60 * 60 * 24 * 30.44));
-        enriched.timeInRole = roleMonths;
-      }
+      // Calculate tenure information using robust parsing helpers
+      const tenure = EmployeeCalculations.calculateTenure(
+        employee.hireDate,
+        employee.roleStartDate,
+        employee.lastRaiseDate
+      );
+      enriched.totalTenure = tenure.totalTenureMonths;
+      enriched.timeInRole = tenure.timeInRoleMonths;
     }
 
     if (config.includePolicyViolations) {
@@ -350,6 +345,33 @@ export class CSVExporter {
       enriched.modifiedBy = 'System'; // Could be enhanced to track actual user
     }
 
+    // Normalize commonly-used date fields for CSV output (format: YYYY-MM-DD, no timezone shift)
+    const normalizeDate = (value: any): string => {
+      const d = EmployeeCalculations.parseDate(value);
+      if (!d || isNaN(d.getTime())) return '';
+      const y = d.getFullYear();
+      const m = String(d.getMonth() + 1).padStart(2, '0');
+      const day = String(d.getDate()).padStart(2, '0');
+      return `${y}-${m}-${day}`;
+    };
+
+    // Map and normalize input date fields
+    if (employee.hireDate || enriched.hireDate) {
+      enriched.hireDate = normalizeDate(employee.hireDate || enriched.hireDate);
+      enriched.latestHireDate = enriched.hireDate;
+    }
+    if (employee.roleStartDate || enriched.roleStartDate) {
+      const roleStart = normalizeDate(employee.roleStartDate || enriched.roleStartDate);
+      enriched.roleStartDate = roleStart;
+      enriched.jobEntryStartDate = roleStart; // Keep these aligned for compatibility
+    }
+    if ((employee as any).lastSalaryChangeDate || employee.lastRaiseDate || enriched.lastRaiseDate) {
+      const lastRaise = normalizeDate(employee.lastRaiseDate || enriched.lastRaiseDate);
+      enriched.lastRaiseDate = lastRaise;
+      const lastChange = normalizeDate((employee as any).lastSalaryChangeDate || lastRaise);
+      enriched.lastSalaryChangeDate = lastChange;
+    }
+
     return enriched;
   }
 
@@ -364,12 +386,20 @@ export class CSVExporter {
     
     // Get all available columns from the data
     const availableColumns = new Set<string>();
+    const EXCLUDED_FIELD_NAMES = new Set<string>(['id', 'firstName', 'lastName', 'totalTenure', 'modifiedBy']);
+    const EXCLUDED_HEADER_LABELS = new Set<string>(['Id', 'First Name', 'Last Name', 'Total Tenure', 'Modified By']);
     employees.forEach(emp => {
-      Object.keys(emp).forEach(key => availableColumns.add(key));
+      Object.keys(emp).forEach(key => {
+        if (!EXCLUDED_FIELD_NAMES.has(key)) {
+          availableColumns.add(key);
+        }
+      });
     });
 
     // Filter column order to only include available columns
-    const finalColumns = columnOrder.filter(col => availableColumns.has(col));
+    let finalColumns = columnOrder.filter(col => availableColumns.has(col) && !EXCLUDED_FIELD_NAMES.has(col));
+    // Also exclude any whose header label is on the excluded list
+    finalColumns = finalColumns.filter(col => !EXCLUDED_HEADER_LABELS.has(this.formatColumnHeader(col)));
 
     // Track header labels already used to avoid duplicates that can break CSV importers
     // This prevents cases like both `proposedRaiseOriginal` (mapped header: "Proposed Raise")
@@ -382,7 +412,7 @@ export class CSVExporter {
     availableColumns.forEach(col => {
       if (!finalColumns.includes(col)) {
         const headerLabel = this.formatColumnHeader(col);
-        if (!usedHeaderLabels.has(headerLabel)) {
+        if (!usedHeaderLabels.has(headerLabel) && !EXCLUDED_FIELD_NAMES.has(col) && !EXCLUDED_HEADER_LABELS.has(headerLabel)) {
           finalColumns.push(col);
           usedHeaderLabels.add(headerLabel);
         }

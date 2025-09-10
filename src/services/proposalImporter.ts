@@ -68,10 +68,7 @@ const PROPOSAL_COLUMN_MAPPINGS: Record<string, keyof ProposalData> = {
   'new_salary': 'proposedSalary',
   'new salary': 'proposedSalary',
   
-  'proposed comparatio': 'proposedComparatio',
-  'proposed_comparatio': 'proposedComparatio',
-  'new_comparatio': 'proposedComparatio',
-  'new comparatio': 'proposedComparatio',
+  // NOTE: Comparatio values from import are intentionally ignored per requirements
   
   'proposed raise': 'proposedRaise',
   'proposed_raise': 'proposedRaise',
@@ -414,6 +411,8 @@ export class ProposalImporter {
         finalProposedRaiseUSD = proposal.proposedRaise * conversionRate;
       }
 
+      // NOTE: Comparatio values from import are intentionally ignored per requirements
+
       // Update employee with proposal data if any raise value was determined
       if (finalProposedRaiseUSD !== null) {
         updatedEmployee.proposedRaise = finalProposedRaiseUSD;
@@ -429,60 +428,6 @@ export class ProposalImporter {
           const newSalaryOriginal = (employee.baseSalary || 0) + raiseAmountOriginal;
           updatedEmployee.comparatio = Math.round((newSalaryOriginal / employee.salaryGradeMid) * 100);
         }
-      }
-      
-      // Handle promotion data
-      if (proposal.hasPromotion !== undefined) {
-        updatedEmployee.hasPromotion = proposal.hasPromotion;
-        
-        // If promotion is true, preserve current job title as old job title
-        if (proposal.hasPromotion && employee.jobTitle && !updatedEmployee.oldJobTitle) {
-          updatedEmployee.oldJobTitle = employee.jobTitle;
-          updatedEmployee.oldSalaryGrade = employee.gradeLevel; // Preserve old grade
-        }
-      }
-      
-      // Update promotion-related fields
-      if (proposal.newJobTitle !== undefined) {
-        updatedEmployee.newJobTitle = proposal.newJobTitle;
-        updatedEmployee.hasPromotion = true; // Implicit promotion if new job title provided
-      }
-      
-      if (proposal.newSalaryGrade !== undefined) {
-        updatedEmployee.newSalaryGrade = proposal.newSalaryGrade;
-        updatedEmployee.hasPromotion = true; // Implicit promotion if new grade provided
-      }
-      
-      if (proposal.promotionType !== undefined) {
-        updatedEmployee.promotionType = proposal.promotionType as 'INTERNAL' | 'LATERAL' | 'VERTICAL' | 'DEMOTION';
-      }
-      
-      if (proposal.promotionJustification !== undefined) {
-        updatedEmployee.promotionJustification = proposal.promotionJustification;
-      }
-      
-      if (proposal.promotionEffectiveDate !== undefined) {
-        updatedEmployee.promotionEffectiveDate = proposal.promotionEffectiveDate;
-      }
-      
-      // Update new salary grade ranges if provided
-      if (proposal.newSalaryGradeMin !== undefined) {
-        updatedEmployee.newSalaryGradeMin = proposal.newSalaryGradeMin;
-      }
-      
-      if (proposal.newSalaryGradeMid !== undefined) {
-        updatedEmployee.newSalaryGradeMid = proposal.newSalaryGradeMid;
-        
-        // Recalculate comparatio based on new salary grade if promotion
-        if (updatedEmployee.hasPromotion && updatedEmployee.newSalary) {
-          const newSalaryOriginal = (employee.baseSalary || 0) + 
-            (proposal.proposedRaise || 0) * (employee.baseSalary || 0) / (employee.baseSalaryUSD || 1);
-          updatedEmployee.comparatio = Math.round((newSalaryOriginal / proposal.newSalaryGradeMid) * 100);
-        }
-      }
-      
-      if (proposal.newSalaryGradeMax !== undefined) {
-        updatedEmployee.newSalaryGradeMax = proposal.newSalaryGradeMax;
       }
 
       return updatedEmployee;

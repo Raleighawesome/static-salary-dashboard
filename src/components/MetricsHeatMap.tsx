@@ -488,20 +488,20 @@ export const MetricsHeatMap: React.FC<MetricsHeatMapProps> = ({
             let showProposedText = false;
             let currentComparatioForDisplay = 0;
             
+            // Show "Proposed" header for any employee with a proposed raise, regardless of metric
+            showProposedText = employee.hasProposedRaise || false;
+            
             if (selectedMetric === 'comparatio') {
               if (employee.proposedComparatio && employee.hasProposedRaise) {
                 // Show proposed comparatio with current in parentheses
                 metricValue = employee.proposedComparatio;
                 currentComparatioForDisplay = employee.comparatio || 0;
-                showProposedText = true;
               } else {
                 // Show current comparatio only
                 metricValue = employee.comparatio || 0;
-                showProposedText = false;
               }
             } else {
               metricValue = typeof employee[selectedMetric] === 'number' ? employee[selectedMetric] : 0;
-              showProposedText = false;
             }
             const colorInfo = getMetricColor(metricValue);
             
