@@ -246,7 +246,17 @@ export class ProposalImporter {
 
       // Map each column to proposal fields
       Object.entries(row).forEach(([csvColumn, value]) => {
-        const mappedField = PROPOSAL_COLUMN_MAPPINGS[csvColumn.toLowerCase().trim()];
+        // Normalize headers to be robust against duplicate-header renaming by CSV tools
+        // Examples handled:
+        //  - "Proposed Salary_1" -> "proposed salary"
+        //  - "Proposed Salary (1)" -> "proposed salary"
+        const normalizedHeader = csvColumn
+          .toLowerCase()
+          .trim()
+          .replace(/_\d+$/i, '')
+          .replace(/\s*\(\d+\)\s*$/i, '');
+
+        const mappedField = PROPOSAL_COLUMN_MAPPINGS[normalizedHeader];
         if (mappedField && value !== null && value !== undefined && value !== '') {
           if (mappedField === 'proposedSalary' || mappedField === 'proposedRaise' || mappedField === 'currentSalary' ||
               mappedField === 'newSalaryGradeMin' || mappedField === 'newSalaryGradeMid' || mappedField === 'newSalaryGradeMax') {
@@ -372,43 +382,51 @@ export class ProposalImporter {
   ): Employee | null {
     try {
       const updatedEmployee = { ...employee };
+      
+      // Determine conversion rate (original currency -> USD) from existing employee data
+      const currentSalaryUSD = employee.baseSalaryUSD || employee.baseSalary || 0;
+      const currentSalaryOriginal = employee.baseSalary || 0;
+      const conversionRate = (employee.baseSalaryUSD && employee.baseSalary)
+        ? (employee.baseSalaryUSD / employee.baseSalary)
+        : 1;
 
-      // Calculate raise amount from percentage if provided
-      if (proposal.proposedRaisePercent && !proposal.proposedRaise) {
+      // Prefer deriving raise from proposed salary, then percent, then direct raise
+      let finalProposedRaiseUSD: number | null = null;
+
+      // 1) Proposed Salary (original currency) → derive raise (original) → convert to USD
+      if (typeof proposal.proposedSalary === 'number') {
+        const raiseAmountOriginal = proposal.proposedSalary - currentSalaryOriginal;
+        finalProposedRaiseUSD = raiseAmountOriginal * conversionRate;
+      }
+
+      // 2) Proposed Raise Percent → compute USD amount
+      if (finalProposedRaiseUSD === null && proposal.proposedRaisePercent) {
         const raisePercent = this.parsePercentageValue(proposal.proposedRaisePercent);
         if (raisePercent !== null) {
-          const currentSalaryUSD = employee.baseSalaryUSD || employee.baseSalary || 0;
-          proposal.proposedRaise = (currentSalaryUSD * raisePercent) / 100;
+          finalProposedRaiseUSD = (currentSalaryUSD * raisePercent) / 100;
         }
       }
 
-      // Calculate raise amount from proposed salary if provided
-      if (proposal.proposedSalary && !proposal.proposedRaise) {
-        const currentSalaryOriginal = employee.baseSalary || 0;
-        const proposedSalaryOriginal = proposal.proposedSalary;
-        
-        // Convert to USD for internal storage
-        const conversionRate = employee.baseSalaryUSD && employee.baseSalary ? 
-          employee.baseSalaryUSD / employee.baseSalary : 1;
-        
-        const raiseAmountOriginal = proposedSalaryOriginal - currentSalaryOriginal;
-        proposal.proposedRaise = raiseAmountOriginal * conversionRate;
+      // 3) Direct Proposed Raise value present
+      if (finalProposedRaiseUSD === null && typeof proposal.proposedRaise === 'number') {
+        // If employee has a non-USD currency (conversionRate ≠ 1), assume provided value is in original currency
+        // and convert to USD. If USD (rate 1), keep as-is.
+        finalProposedRaiseUSD = proposal.proposedRaise * conversionRate;
       }
 
-      // Update employee with proposal data
-      if (proposal.proposedRaise !== undefined) {
-        updatedEmployee.proposedRaise = proposal.proposedRaise;
-        
+      // Update employee with proposal data if any raise value was determined
+      if (finalProposedRaiseUSD !== null) {
+        updatedEmployee.proposedRaise = finalProposedRaiseUSD;
+
         // Recalculate dependent fields
-        const currentSalaryUSD = employee.baseSalaryUSD || employee.baseSalary || 0;
-        updatedEmployee.newSalary = currentSalaryUSD + proposal.proposedRaise;
+        updatedEmployee.newSalary = currentSalaryUSD + finalProposedRaiseUSD;
         updatedEmployee.percentChange = currentSalaryUSD > 0 ? 
-          (proposal.proposedRaise / currentSalaryUSD) * 100 : 0;
+          (finalProposedRaiseUSD / currentSalaryUSD) * 100 : 0;
         
-        // Calculate new comparatio if we have salary grade info
+        // Calculate new comparatio if we have salary grade info (comparatio uses original currency)
         if (employee.salaryGradeMid) {
-          const newSalaryOriginal = (employee.baseSalary || 0) + 
-            (proposal.proposedRaise * (employee.baseSalary || 0) / (employee.baseSalaryUSD || 1));
+          const raiseAmountOriginal = finalProposedRaiseUSD / (conversionRate || 1);
+          const newSalaryOriginal = (employee.baseSalary || 0) + raiseAmountOriginal;
           updatedEmployee.comparatio = Math.round((newSalaryOriginal / employee.salaryGradeMid) * 100);
         }
       }

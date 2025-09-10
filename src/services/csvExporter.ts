@@ -370,11 +370,22 @@ export class CSVExporter {
 
     // Filter column order to only include available columns
     const finalColumns = columnOrder.filter(col => availableColumns.has(col));
-    
-    // Add any remaining columns not in the specified order
+
+    // Track header labels already used to avoid duplicates that can break CSV importers
+    // This prevents cases like both `proposedRaiseOriginal` (mapped header: "Proposed Raise")
+    // and raw `proposedRaise` (fallback header: also "Proposed Raise") appearing together.
+    const usedHeaderLabels = new Set<string>(finalColumns.map(col => this.formatColumnHeader(col)));
+
+    // Add any remaining columns not in the specified order, but skip any whose formatted header
+    // would duplicate an already-used header label. This avoids PapaParse's
+    // "Duplicate headers found and renamed" behavior on re-import of exported CSVs.
     availableColumns.forEach(col => {
       if (!finalColumns.includes(col)) {
-        finalColumns.push(col);
+        const headerLabel = this.formatColumnHeader(col);
+        if (!usedHeaderLabels.has(headerLabel)) {
+          finalColumns.push(col);
+          usedHeaderLabels.add(headerLabel);
+        }
       }
     });
 
