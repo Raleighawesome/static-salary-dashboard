@@ -106,8 +106,7 @@
 
 /* Content Grid */
 .contentGrid {
-  display: grid;
-  grid-template-columns: 1fr 1fr;
+  display: flex;
   gap: 24px;
   padding: 24px;
   min-height: 400px;
@@ -116,6 +115,7 @@
 
 .leftColumn,
 .rightColumn {
+  flex: 1;
   display: flex;
   flex-direction: column;
   gap: 20px;
